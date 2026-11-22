@@ -83,9 +83,9 @@ function render(){
  const comparable=valued.filter(x=>x.sell!=null);
  const total=valued.reduce((s,x)=>s+x.best,0);
  const extra=comparable.reduce((s,x)=>s+x.best-x.sell,0);
+ const leftoverTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+(x.leftoverValue||0),0);
  const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0)+leftoverTotal;
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.meltValue,0);
- const leftoverTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+(x.leftoverValue||0),0);
  const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
