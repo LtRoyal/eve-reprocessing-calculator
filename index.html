@@ -20,9 +20,7 @@ h1,h2{letter-spacing:.025em}
 </style></head><body>
 <h1>EVE Sell or Reprocess</h1><small>Jita 4-4 buy orders • 55% default yield • no EVE login</small>
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Make sure all your items are repackaged and stacked. Copy items directly from your hangar or boxes and paste into the box below o7</p>
-<textarea id="inventory">Damage Control I	35	Damage Control
-425mm Railgun I	12	Hybrid Weapon
-Large Shield Extender I	20	Shield Extender</textarea>
+<textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
 <div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button></div>
