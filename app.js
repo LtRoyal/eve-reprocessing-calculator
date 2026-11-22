@@ -125,7 +125,7 @@ function render(){
  }
  summary.append(grid);
  const meltNote=document.createElement('p');meltNote.className='hint note';
- meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Ammunition below a full batch of 100 contributes zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items lack verified reprocessing recipes or material prices. No partial total is shown.';
+ meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Items below their SDE minimum reprocessing batch contribute zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items lack verified reprocessing recipes or material prices. No partial total is shown.';
  summary.append(meltNote);
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
@@ -152,27 +152,30 @@ async function calculate(){
     }
    try{
     // A missing full-stack item buy order does not prevent valuation of recovered materials.
-    const ammo=await isAmmo(def.id);
-    const meltQty=ammo?Math.floor(item.qty/100)*100:item.qty;
+    const portion=Number(def.portionSize||1);
+    if(!Number.isSafeInteger(portion)||portion<1)throw Error('Invalid SDE reprocessing portion size');
+    const ammo=portion>1;
+    const meltQty=Math.floor(item.qty/portion)*portion;
     const remainder=item.qty-meltQty;
     const sell=await price(def.id,item.qty);
     const leftoverValue=remainder?await price(def.id,remainder):0;
     let meltValue=0,failure=null;
-    if(ammo&&meltQty===0){
-     if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than 100 rounds; remaining ${remainder} must be sold.`});
-     else results.push({...item,action:'REVIEW',reason:'Fewer than 100 rounds and insufficient Jita buy orders to sell them.'});
+    if(meltQty===0){
+     if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than ${portion} units required for a reprocessing batch; remaining ${remainder} must be sold.`});
+     else results.push({...item,action:'REVIEW',reason:'Below the minimum reprocessing batch and insufficient Jita buy orders to sell them.'});
      render();continue;
     }
     for(const[materialId,amount]of def.materials){
      if(!Number.isSafeInteger(amount)||amount<=0){failure='Invalid material quantity';break}
-     const units=Math.floor(amount*meltQty*y*(1-t));if(units===0)continue;
+     const units=Math.floor(amount*(meltQty/portion)*y*(1-t));if(units===0)continue;
      const materialValue=await price(materialId,units);
      if(materialValue===null){failure=`Insufficient Jita buy orders for material type ${materialId}`;break}
      meltValue+=materialValue;
     }
-    if(remainder&&leftoverValue===null)failure=failure||'Insufficient Jita buy orders for remaining ammunition';
+    const meltValuationComplete=failure===null;
+    if(remainder&&leftoverValue===null)failure=failure||'Insufficient Jita buy orders for remaining units';
     const rep=failure?null:meltValue+leftoverValue;
-    const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete:failure===null};
+    const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete};
     if(failure){
      if(sell!==null)results.push({...item,...details,sell,best:sell,action:'SELL',reason:`Reprocessing comparison unavailable: ${failure}`});
      else results.push({...item,action:'REVIEW',reason:`No full-stack item buy order; ${failure}`});

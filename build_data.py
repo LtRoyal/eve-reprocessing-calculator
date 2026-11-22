@@ -28,15 +28,14 @@ def main():
             if qty > 0 and tid in names and mid in names:
                 recipes.setdefault(tid,[]).append([mid,qty])
         except (KeyError,ValueError): continue
-    # This calculator handles only items with one-unit reprocessing portions.
-    # Other items must be reviewed to avoid wrong material rounding.
+    # Preserve each item’s official SDE portion size; material quantities are per portion.
     items = {}
     for tid, t in names.items():
-        if t['published'] and t['portion'] == 1 and tid in recipes:
-            items[t['name'].casefold()] = {'name':t['name'],'id':tid,'materials':recipes[tid]}
+        if t['published'] and t['portion'] >= 1 and tid in recipes:
+            items[t['name'].casefold()] = {'name':t['name'],'id':tid,'portionSize':t['portion'],'materials':recipes[tid]}
     if len(items) < 1000: raise RuntimeError(f'Suspiciously small dataset: {len(items)} items')
     out = {'generated':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'source':BASE,
-           'portionSize':1, 'items':items}
+           'items':items}
     pathlib.Path('eve-data.json').write_text(json.dumps(out,separators=(',',':'),ensure_ascii=False),encoding='utf-8')
     print(f'Generated {len(items)} recipes')
 if __name__ == '__main__': main()
