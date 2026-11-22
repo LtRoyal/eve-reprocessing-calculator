@@ -58,7 +58,7 @@ function makeRow(item){
 }
 function render(){
  const query=$('search').value.trim().toLocaleLowerCase();
- for(const [id,action] of [['sell','SELL'],['rep','REPROCESS'],['review','REVIEW']]){
+ for(const [id,action] of [['sell','SELL'],['rep','REPROCESS']]){
   const all=results.filter(x=>x.action===action).sort(sort),list=all.filter(x=>x.name.toLocaleLowerCase().includes(query)),el=$(id);el.replaceChildren();
   if(!list.length)el.textContent=all.length?'No matching items':'No items';else list.forEach(x=>el.append(makeRow(x)));
   const countId=action==='SELL'?'sellcount':action==='REPROCESS'?'repcount':'reviewcount';
@@ -66,23 +66,29 @@ function render(){
  }
  const valued=results.filter(x=>x.action!=='REVIEW');
  const comparable=valued.filter(x=>x.sell!=null);
- const reprocessOnly=valued.filter(x=>x.sell==null);
- const total=valued.reduce((s,x)=>s+x.best,0),extra=comparable.reduce((s,x)=>s+x.best-x.sell,0);
+ const total=valued.reduce((s,x)=>s+x.best,0);
+ const extra=comparable.reduce((s,x)=>s+x.best-x.sell,0);
+ const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0);
+ const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.rep,0);
+ const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
-  ['Total potential ISK',isk(total),''],
-  ['Extra ISK from better choices',isk(extra),'gain'],
-  ['Reprocess-only items without a sale comparison',String(reprocessOnly.length),''],
-  ['Items needing review',String(results.length-valued.length),'']
+  {label:'Total potential ISK',value:isk(total)},
+  {label:'Extra ISK from better choices',value:isk(extra),kind:'gain'},
+  {label:'ISK made from selling',value:isk(sellTotal),icon:'sell-icon.png'},
+  {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'}
  ];
  const grid=document.createElement('div');grid.className='summary-grid';
- for(const [label,value,kind] of cards){
+ for(const {label,value,kind,icon} of cards){
   const card=document.createElement('div');card.className='summary-card';
-  const title=document.createElement('div');title.className='summary-label';title.textContent=label;
+  const title=document.createElement('div');title.className='summary-label'+(icon?' with-icon':'');
+  if(icon){const img=document.createElement('img');img.src=icon;img.alt='';img.setAttribute('aria-hidden','true');title.append(img)}
+  const titleText=document.createElement('span');titleText.textContent=label;title.append(titleText);
   const amount=document.createElement('div');amount.className='summary-value'+(kind?' '+kind:'');amount.textContent=value;
   card.append(title,amount);grid.append(card);
  }
  summary.append(grid);
+ if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){

@@ -16,6 +16,7 @@ h1,h2{letter-spacing:.025em}
 .summary-label{font-size:.9rem;color:#a7b6cc;margin-bottom:8px}
 .summary-value{font-family:"Shentox Site",system-ui,Arial,sans-serif;font-weight:600;font-size:clamp(1.1rem,2vw,1.55rem);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .summary-value.gain{color:#a1e6b3}
+.summary-label.with-icon{display:flex;align-items:center;gap:9px;min-height:32px}.summary-label.with-icon img{width:28px;height:28px;object-fit:contain;flex:none}
 </style></head><body>
 <h1>EVE Sell or Reprocess</h1><small>Jita 4-4 buy orders • 55% default yield • no EVE login</small>
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Make sure all your items are repackaged and stacked. Copy items directly from your hangar or boxes and paste into the box below o7</p>
@@ -26,8 +27,8 @@ Large Shield Extender I	20	Shield Extender</textarea>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
 <div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button></div>
 <p id="status" class="status hint" role="status">Ready.</p></div>
-<div class="panel"><label for="search">Find an item in the results</label><input id="search" class="searchbar" type="search" placeholder="Search SELL, REPROCESS and Needs Review…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
+<div class="panel"><label for="search">Find an item in the results</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
-<div class="panel"><h2>Needs review <span id="reviewcount">(0)</span></h2><div id="review" class="result-list">No items yet</div></div>
-<div class="panel"><h2>Summary</h2><p id="summary">No verified results yet.</p><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Some items require special reprocessing rules and will be flagged for review. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
-<script src="app.js?v=5" defer></script></body></html>
+
+<div class="panel"><h2>Summary</h2><p id="summary">No verified results yet.</p><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Items without reliable valuations will be flagged in the calculation status. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
+<script src="app.js?v=6" defer></script></body></html>
