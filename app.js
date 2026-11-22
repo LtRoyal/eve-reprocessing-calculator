@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id), STATION=60003760, REGION=10000002;
 const isk=n=>Number(n).toLocaleString('en-GB',{maximumFractionDigits:0})+' ISK';
 const sort=(a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'});
 let dataset=null,results=[];
-const ordersCache=new Map(),handled=new Set();
+const ordersCache=new Map();
 function parseInventory(text){
  const map=new Map(),bad=[];
  text.split(/\r?\n/).forEach((line,i)=>{
@@ -45,12 +45,10 @@ function fillValue(orders,qty){let left=qty,total=0;for(const o of orders){if(le
 async function price(typeId,qty){return fillValue(await getOrders(typeId),qty)}
 function makeRow(item){
  const wrap=document.createElement('div'),d=document.createElement('div');d.className='item';
- const left=document.createElement('div'),check=document.createElement('input');check.type='checkbox';check.title='Mark handled';
- check.checked=handled.has(item.name.toLowerCase());d.classList.toggle('done',check.checked);
- check.addEventListener('change',()=>{const key=item.name.toLowerCase();if(check.checked)handled.add(key);else handled.delete(key);d.classList.toggle('done',check.checked)});
+ const left=document.createElement('div');
  const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';
  name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
- left.append(check,name);const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
+ left.append(name);const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
  if(item.action==='REPROCESS'){
   const note=document.createElement('div');note.className='hint note';
@@ -70,11 +68,25 @@ function render(){
  const comparable=valued.filter(x=>x.sell!=null);
  const reprocessOnly=valued.filter(x=>x.sell==null);
  const total=valued.reduce((s,x)=>s+x.best,0),extra=comparable.reduce((s,x)=>s+x.best-x.sell,0);
- $('summary').textContent=`Combined calculated value: ${isk(total)} | Verified extra vs selling (comparable items only): ${isk(extra)} | Reprocessing-only items without a sale comparison: ${reprocessOnly.length} | Items needing review: ${results.length-valued.length}`;
+ const summary=$('summary');summary.replaceChildren();
+ const cards=[
+  ['Total potential ISK',isk(total),''],
+  ['Extra ISK from better choices',isk(extra),'gain'],
+  ['Reprocess-only items without a sale comparison',String(reprocessOnly.length),''],
+  ['Items needing review',String(results.length-valued.length),'']
+ ];
+ const grid=document.createElement('div');grid.className='summary-grid';
+ for(const [label,value,kind] of cards){
+  const card=document.createElement('div');card.className='summary-card';
+  const title=document.createElement('div');title.className='summary-label';title.textContent=label;
+  const amount=document.createElement('div');amount.className='summary-value'+(kind?' '+kind:'');amount.textContent=value;
+  card.append(title,amount);grid.append(card);
+ }
+ summary.append(grid);
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];handled.clear();
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
