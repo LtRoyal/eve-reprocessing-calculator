@@ -32,10 +32,10 @@ h1,h2{letter-spacing:.025em}
 <textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
-<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button></div>
+<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button><button id="share" type="button">Share Inventory Link</button></div>
 <p id="status" class="status hint" role="status">Ready.</p></div>
 <div class="panel"><label for="search">Find an item in the results</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
 
 <div class="panel"><h2>Summary</h2><div id="summary">No verified results yet.</div><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Items without reliable valuations will be flagged in the calculation status. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
-<script src="app.js?v=41" defer></script></body></html>
+<script src="app.js?v=42" defer></script></body></html>

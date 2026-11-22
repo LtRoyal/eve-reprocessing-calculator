@@ -143,4 +143,70 @@ $('export').addEventListener('click',()=>{
  const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';const lines=['Item,Quantity,Action,Sell ISK,Reprocess ISK,Best ISK,Reason'];
  for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',q(r.reason)].join(','));
  const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-});loadData();
+});
+// Share links store inventory and settings in the URL fragment, not on a server.
+// gzip compression keeps typical inventories shorter; no external library is required.
+const SHARE_PREFIX = '#inventory=';
+const SHARE_MAX_BYTES = 150000;
+function bytesToBase64Url(bytes) {
+ let out = '';
+ for (let i=0;i<bytes.length;i+=8192) out += String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(out).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64UrlToBytes(encoded) {
+ if (!/^[A-Za-z0-9_-]+$/.test(encoded)) throw Error('Invalid inventory link.');
+ const raw=atob(encoded.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-encoded.length%4)%4));
+ return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function compressShare(input) {
+ const raw=new TextEncoder().encode(input);
+ if (!('CompressionStream' in window)) return 'p'+bytesToBase64Url(raw);
+ const stream=new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'));
+ return 'g'+bytesToBase64Url(new Uint8Array(await new Response(stream).arrayBuffer()));
+}
+async function decompressShare(encoded) {
+ const mode=encoded[0], bytes=base64UrlToBytes(encoded.slice(1));
+ if(bytes.byteLength>SHARE_MAX_BYTES) throw Error('Shared inventory is too large.');
+ if(mode==='p') return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+ if(mode!=='g' || !('DecompressionStream' in window)) throw Error('This browser cannot open the compressed inventory link.');
+ const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+ // Read incrementally to cap decompressed size, including malicious links.
+ const reader=stream.getReader(),chunks=[];let size=0;
+ try {
+  while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;
+   if(size>SHARE_MAX_BYTES){await reader.cancel();throw Error('Shared inventory is too large.')}chunks.push(value)}
+ }finally{reader.releaseLock()}
+ const result=new Uint8Array(size);let offset=0;
+ for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length}
+ return new TextDecoder('utf-8',{fatal:true}).decode(result);
+}
+$('share').addEventListener('click',async()=>{
+ try {
+  const inventory=$('inventory').value;
+  if(!inventory.trim()) throw Error('Paste your inventory before sharing.');
+  const payload=JSON.stringify({v:1,inventory,yield:$('yield').value,tax:$('tax').value});
+  if(new TextEncoder().encode(payload).length>SHARE_MAX_BYTES) throw Error('Inventory too large for a shareable link.');
+  const fragment=SHARE_PREFIX+await compressShare(payload);
+  const url=location.origin+location.pathname+location.search+fragment;
+  if(url.length>12000) throw Error('This inventory makes a link too long to share reliably. Try a smaller selection.');
+  await navigator.clipboard.writeText(url);
+  $('status').textContent='Share link copied! Anyone with the link can view the inventory and automatically recalculate with current Jita prices.';
+ }catch(e){$('status').textContent='Could not share inventory: '+e.message}
+});
+async function startCalculator(){
+ // Wait for the recipe dataset before auto-calculating, so shared links work on first load.
+ await loadData();
+ if(!location.hash.startsWith(SHARE_PREFIX))return;
+ try {
+  const encoded=location.hash.slice(SHARE_PREFIX.length);
+  const shared=JSON.parse(await decompressShare(encoded));
+  if(shared.v!==1 || typeof shared.inventory!=='string' || !shared.inventory.trim()) throw Error('Invalid inventory data.');
+  const y=Number(shared.yield),t=Number(shared.tax);
+  if(!Number.isFinite(y)||!Number.isFinite(t)||y<0||y>100||t<0||t>100)throw Error('Invalid yield or tax.');
+  $('inventory').value=shared.inventory;
+  $('yield').value=String(y);$('tax').value=String(t);
+  // Never execute content from the link; inventory is always handled as plain text.
+  await calculate();
+ }catch(e){$('status').textContent='Could not load shared inventory: '+e.message}
+}
+startCalculator();
