@@ -43,6 +43,23 @@ async function loadData(){
   dataset=data.items;$('dataStatus').textContent=`✓ Automatic EVE material data loaded (${Object.keys(dataset).length.toLocaleString()} recipes; ${data.generated?.slice(0,10)||'date unknown'}).`;
  }catch(err){dataset=null;$('dataStatus').textContent='⚠ Automatic EVE material data not yet available. Run the GitHub Actions “Update EVE reprocessing data” workflow. Details: '+err.message}
 }
+const typeIdCache=new Map();
+async function resolveTypeId(name){
+ const key=name.toLowerCase();
+ if(typeIdCache.has(key))return typeIdCache.get(key);
+ const job=(async()=>{
+  const response=await fetch('https://esi.evetech.net/latest/universe/ids/',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify([name])
+  });
+  if(!response.ok)throw Error(`ESI item-name lookup failed (${response.status})`);
+  const data=await response.json();
+  const found=(data.inventory_types||[]).find(x=>x.name.toLowerCase()===key);
+  if(!found)throw Error('Item name not found in EVE item database');
+  return found.id;
+ })();
+ typeIdCache.set(key,job);
+ try{return await job}catch(e){typeIdCache.delete(key);throw e}
+}
 async function getOrders(typeId){
  if(ordersCache.has(typeId))return ordersCache.get(typeId);
  const job=(async()=>{let all=[];
@@ -86,7 +103,7 @@ function render(){
  const leftoverTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+(x.leftoverValue||0),0);
  const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0)+leftoverTotal;
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.meltValue,0);
- const allMeltKnown=results.every(x=>x.meltValue!=null && x.meltValuationComplete===true);
+ const allMeltKnown=results.length>0 && results.every(x=>x.meltValue!=null && x.meltValuationComplete===true);
  const allMeltTotal=results.reduce((s,x)=>s+(x.meltValuationComplete===true?x.meltValue:0),0);
  const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
@@ -108,7 +125,7 @@ function render(){
  }
  summary.append(grid);
  const meltNote=document.createElement('p');meltNote.className='hint note';
- meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Ammunition below a full batch of 100 contributes zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items could not be fully valued for reprocessing. No partial total is shown.';
+ meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Ammunition below a full batch of 100 contributes zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items lack verified reprocessing recipes or material prices. No partial total is shown.';
  summary.append(meltNote);
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
@@ -122,7 +139,17 @@ async function calculate(){
   if(!dataset){results=items.map(x=>({...x,action:'REVIEW',reason:'Automatic reprocessing dataset missing; no reliable recommendation possible.'}));render();$('status').textContent='Item import succeeded, but the EVE material dataset is not loaded.';return}
   for(let i=0;i<items.length;i++){
    const item=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${item.name}`;await new Promise(resolve=>setTimeout(resolve,0));
-   const def=dataset[item.name.toLowerCase()];if(!def){results.push({...item,action:'REVIEW',reason:'No verified one-unit reprocessing recipe for this item.'});render();continue}
+   const def=dataset[item.name.toLowerCase()];
+    if(!def){
+     try{
+      const typeId=await resolveTypeId(item.name);
+      const sell=await price(typeId,item.qty);
+      const reason='No verified reprocessing recipe available; melt comparison cannot be calculated.';
+      if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,meltValue:null,meltValuationComplete:false,reason});
+      else results.push({...item,action:'REVIEW',sell:null,meltValue:null,meltValuationComplete:false,reason:reason+' Insufficient Jita 4-4 buy orders to sell the full quantity.'});
+     }catch(e){results.push({...item,action:'REVIEW',meltValue:null,meltValuationComplete:false,reason:'Missing recipe; item/market lookup failed: '+e.message})}
+     render();continue;
+    }
    try{
     // A missing full-stack item buy order does not prevent valuation of recovered materials.
     const ammo=await isAmmo(def.id);
