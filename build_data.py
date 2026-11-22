@@ -1,6 +1,6 @@
 """Build a compact, versioned reprocessing lookup from Fuzzwork's EVE SDE CSV export."""
 import csv, io, json, pathlib, urllib.request, datetime
-BASE = 'https://www.fuzzwork.co.uk/dump/latest/csv/'
+BASE = 'https://www.fuzzwork.co.uk/dump/latest/'
 def get_csv(name):
     req = urllib.request.Request(BASE + name, headers={'User-Agent':'EVE-Reprocessing-Calculator/1.0 (GitHub Pages)'})
     with urllib.request.urlopen(req, timeout=90) as response:
