@@ -86,11 +86,14 @@ function render(){
  const leftoverTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+(x.leftoverValue||0),0);
  const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0)+leftoverTotal;
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.meltValue,0);
+ const allMeltKnown=results.every(x=>x.meltValue!=null && x.meltValuationComplete===true);
+ const allMeltTotal=results.reduce((s,x)=>s+(x.meltValuationComplete===true?x.meltValue:0),0);
  const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},
   {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'},
+  {label:'Total ISK if everything was melted',value:allMeltKnown?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
   {label:'Total potential ISK',value:isk(total)},
   {label:'ISK made with calculator',value:isk(extra),kind:'gain'}
  ];
@@ -104,6 +107,9 @@ function render(){
   card.append(title,amount);grid.append(card);
  }
  summary.append(grid);
+ const meltNote=document.createElement('p');meltNote.className='hint note';
+ meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Ammunition below a full batch of 100 contributes zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items could not be fully valued for reprocessing. No partial total is shown.';
+ summary.append(meltNote);
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
@@ -126,7 +132,7 @@ async function calculate(){
     const leftoverValue=remainder?await price(def.id,remainder):0;
     let meltValue=0,failure=null;
     if(ammo&&meltQty===0){
-     if(sell!==null)results.push({...item,ammo,meltQty,remainder,sell,best:sell,action:'SELL',reason:`Fewer than 100 rounds; remaining ${remainder} must be sold.`});
+     if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than 100 rounds; remaining ${remainder} must be sold.`});
      else results.push({...item,action:'REVIEW',reason:'Fewer than 100 rounds and insufficient Jita buy orders to sell them.'});
      render();continue;
     }
@@ -139,7 +145,7 @@ async function calculate(){
     }
     if(remainder&&leftoverValue===null)failure=failure||'Insufficient Jita buy orders for remaining ammunition';
     const rep=failure?null:meltValue+leftoverValue;
-    const details={ammo,meltQty,remainder,meltValue,leftoverValue};
+    const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete:failure===null};
     if(failure){
      if(sell!==null)results.push({...item,...details,sell,best:sell,action:'SELL',reason:`Reprocessing comparison unavailable: ${failure}`});
      else results.push({...item,action:'REVIEW',reason:`No full-stack item buy order; ${failure}`});
