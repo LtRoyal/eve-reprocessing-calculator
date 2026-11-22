@@ -72,12 +72,29 @@ function render(){
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.rep,0);
  const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
- const cards=[
-  {label:'Total potential ISK',value:isk(total)},
-  {label:'Extra ISK from better choices',value:isk(extra),kind:'gain'},
-  {label:'ISK made from selling',value:isk(sellTotal),icon:'sell-icon.png'},
-  {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'}
- ];
+ 
+const cards=[
+  {
+    label:'ISK made from selling',
+    value:isk(sellTotal),
+    icon:'sell-icon.png'
+  },
+  {
+    label:'ISK made from melting',
+    value:isk(meltTotal),
+    icon:'reprocess-icon.png'
+  },
+  {
+    label:'Total potential ISK',
+    value:isk(total)
+  },
+  {
+    label:'ISK made with calculator',
+    value:isk(extra),
+    kind:'gain'
+  }
+];
+
  const grid=document.createElement('div');grid.className='summary-grid';
  for(const {label,value,kind,icon} of cards){
   const card=document.createElement('div');card.className='summary-card';
