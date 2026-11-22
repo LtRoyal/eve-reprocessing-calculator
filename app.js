@@ -1,16 +1,139 @@
 'use strict';
 const $=id=>document.getElementById(id), STATION=60003760, REGION=10000002;
-let dataset=null,results=[];
 const isk=n=>Number(n).toLocaleString('en-GB',{maximumFractionDigits:0})+' ISK';
 const sort=(a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'});
-function parseInventory(text){const map=new Map();const bad=[];text.split(/\r?\n/).forEach((line,i)=>{if(!line.trim())return;const p=line.trim().split(/\t| {2,}/).map(s=>s.trim()).filter(Boolean);let qty=1,name=line.trim();if(p.length>1&&/^[\d,]+$/.test(p.at(-1))){qty=Number(p.pop().replaceAll(',',''));name=p.join(' ')}else if(p.length>1&&/^[\d,]+$/.test(p[0])){qty=Number(p.shift().replaceAll(',',''));name=p.join(' ')}if(!name||!Number.isSafeInteger(qty)||qty<=0){bad.push(i+1);return}let key=name.toLowerCase(),old=map.get(key);map.set(key,{name:old?.name||name,qty:(old?.qty||0)+qty})});return {items:[...map.values()].sort(sort),bad}}
-function validateData(d){if(!d||!Array.isArray(d.items))throw Error('JSON must contain an items array. See README for schema.');const names=new Map();for(const item of d.items){if(typeof item.name!=='string'||!Number.isInteger(item.typeId)||!Array.isArray(item.materials))throw Error('Invalid item record: name, typeId and materials required');names.set(item.name.toLowerCase(),item)}return names}
-$('sde').addEventListener('change',async e=>{try{dataset=validateData(JSON.parse(await e.target.files[0].text()));$('status').textContent=`Loaded ${dataset.size} item definitions. Ready to calculate.`}catch(err){dataset=null;$('status').textContent='Invalid static data: '+err.message}});
-const orderCache=new Map();
-async function buyOrders(id){if(orderCache.has(id))return orderCache.get(id);const task=(async()=>{let out=[];for(let page=1;page<=30;page++){let url=`https://esi.evetech.net/latest/markets/${REGION}/orders/?order_type=buy&type_id=${id}&page=${page}`;let r=await fetch(url);if(!r.ok)throw Error(`ESI HTTP ${r.status}`);let data=await r.json();out.push(...data.filter(o=>o.location_id===STATION&&o.is_buy_order&&o.volume_remain>0));let pages=Number(r.headers.get('x-pages')||1);if(page>=pages)break}return out.sort((a,b)=>b.price-a.price)})();orderCache.set(id,task);try{return await task}catch(e){orderCache.delete(id);throw e}}
-function fillValue(orders,qty){let left=qty,sum=0;for(const o of orders){if(left<=0)break;let n=Math.min(left,o.volume_remain);sum+=n*o.price;left-=n}return left===0?sum:null}
-async function price(id,qty){return fillValue(await buyOrders(id),qty)}
-function row(item){const d=document.createElement('div');d.className='item';const left=document.createElement('div');const check=document.createElement('input');check.type='checkbox';check.style.width='auto';check.title='Mark handled';check.addEventListener('change',()=>d.classList.toggle('done',check.checked));const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1000)}catch(e){$('status').textContent='Clipboard access blocked by browser.'}};left.append(check,name);const right=document.createElement('span');right.textContent=`×${item.qty}  ${item.best==null?'':isk(item.best)}`;d.append(left,right);if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;const wrap=document.createElement('div');wrap.append(d,note);return wrap}return d}
-function render(){for(const [id,action] of [['sell','SELL'],['rep','REPROCESS'],['review','REVIEW']]){const el=$(id);el.replaceChildren();const list=results.filter(x=>x.action===action).sort(sort);for(const x of list)el.append(row(x));if(!list.length)el.textContent='No items';if(action==='SELL')$('sellcount').textContent=`(${list.length})`;if(action==='REPROCESS')$('repcount').textContent=`(${list.length})`;}const valued=results.filter(x=>x.action!=='REVIEW');const total=valued.reduce((s,x)=>s+x.best,0);const gain=valued.reduce((s,x)=>s+x.best-x.sell,0);$('summary').textContent=`Verified total: ${isk(total)} | Extra over selling everything: ${isk(gain)} | Needs review: ${results.length-valued.length}`;$('export').disabled=!results.length}
-$('go').onclick=async()=>{const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];try{if(!dataset){const {items,bad}=parseInventory($('inventory').value);results=items.map(x=>({...x,action:'REVIEW',reason:'Reprocessing recipes not loaded — cannot safely compare Jita prices.'}));render();$('status').textContent=`Imported ${items.length} item types. No SELL/REPROCESS decisions yet: the required item/material dataset is missing. Please do not melt items based on this page.${bad.length?' Invalid lines: '+bad.join(', '):''}`;return;}const {items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid items first.');const y=Number($('yield').value)/100,t=Number($('tax').value)/100;if(!Number.isFinite(y)||!Number.isFinite(t)||y<0||y>1||t<0||t>1)throw Error('Yield and tax must be between 0 and 100.');for(let i=0;i<items.length;i++){const x=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${x.name}`;await new Promise(r=>setTimeout(r,0));const def=dataset.get(x.name.toLowerCase());if(!def){results.push({...x,action:'REVIEW',reason:'Item not present in supplied static data'});continue}try{if(!def.materials.length){results.push({...x,action:'REVIEW',reason:'No verified reprocessing recipe'});continue}const sell=await price(def.typeId,x.qty);if(sell===null){results.push({...x,action:'REVIEW',reason:'Insufficient Jita 4-4 buy-order volume for item'});continue}let rep=0;let failure='';for(const m of def.materials){if(!Number.isInteger(m.typeId)||!Number.isInteger(m.quantity)||m.quantity<0){failure='Invalid material recipe';break}const units=Math.floor(m.quantity*x.qty*y*(1-t));if(units===0)continue;const val=await price(m.typeId,units);if(val===null){failure=`Insufficient Jita buy-order volume for material ${m.typeId}`;break}rep+=val}if(failure){results.push({...x,action:'REVIEW',reason:failure});continue}results.push({...x,sell,rep,best:Math.max(sell,rep),action:rep>sell?'REPROCESS':'SELL'})}catch(err){results.push({...x,action:'REVIEW',reason:err.message})}}render();$('status').textContent=`Finished. ${results.filter(x=>x.action!=='REVIEW').length} valued; ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`}catch(err){$('status').textContent='Cannot calculate: '+err.message;render()}finally{btn.disabled=false}};
-$('export').onclick=()=>{const quote=s=>'"'+String(s??'').replaceAll('"','""')+'"';const lines=[['Item','Quantity','Action','Sell ISK','Reprocess ISK','Best ISK','Reason'].join(',')];for(const r of [...results].sort(sort))lines.push([quote(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',quote(r.reason)].join(','));const u=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'}));const a=document.createElement('a');a.href=u;a.download='eve-reprocess-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
+let dataset=null,results=[];
+const ordersCache=new Map();
+function parseInventory(text){
+ const map=new Map(),bad=[];
+ text.split(/\r?\n/).forEach((line,i)=>{
+  if(!line.trim())return;
+  const parts=line.split('\t').map(s=>s.trim());
+  let name='',qty=1;
+  if(parts.length>=2){
+   // EVE clipboard layout: name<TAB>quantity<TAB>category[...]
+   if(/^\d[\d,]*$/.test(parts[1])){name=parts[0];qty=Number(parts[1].replaceAll(',',''))}
+   else if(/^\d[\d,]*$/.test(parts[0])){name=parts[1];qty=Number(parts[0].replaceAll(',',''))}
+   else {bad.push(i+1);return}
+  }else{
+   // Accept one item name per line or name + quantity separated by multiple spaces.
+   const m=line.trim().match(/^(.*?)\s{2,}(\d[\d,]*)$/);
+   if(m){name=m[1].trim();qty=Number(m[2].replaceAll(',',''))}
+   else name=line.trim();
+  }
+  if(!name||!Number.isSafeInteger(qty)||qty<1){bad.push(i+1);return}
+  const key=name.toLowerCase(),old=map.get(key);
+  map.set(key,{name:old?.name||name,qty:(old?.qty||0)+qty});
+ });
+ return {items:[...map.values()].sort(sort),bad};
+}
+async function loadData(){
+ try{
+  const r=await fetch('./eve-data.json',{cache:'no-cache'});
+  if(!r.ok)throw Error(`HTTP ${r.status}`);
+  const data=await r.json();
+  if(!data.items||Object.keys(data.items).length<1000)throw Error('Incomplete dataset');
+  dataset=data.items;
+  $('dataStatus').textContent=`✓ Automatic EVE material data loaded (${Object.keys(dataset).length.toLocaleString()} recipes; ${data.generated?.slice(0,10)||'date unknown'}).`;
+ }catch(err){dataset=null;$('dataStatus').textContent='⚠ Automatic EVE material data not yet available. Run the GitHub Actions “Update EVE reprocessing data” workflow. Details: '+err.message}
+}
+async function getOrders(typeId){
+ if(ordersCache.has(typeId))return ordersCache.get(typeId);
+ const job=(async()=>{
+  let all=[];
+  for(let page=1;page<=100;page++){
+   const url=`https://esi.evetech.net/latest/markets/${REGION}/orders/?order_type=buy&type_id=${typeId}&page=${page}`;
+   const response=await fetch(url);
+   if(!response.ok)throw Error(`ESI error ${response.status} for type ${typeId}`);
+   const data=await response.json();
+   if(!Array.isArray(data))throw Error('Unexpected ESI response');
+   all.push(...data.filter(o=>o.location_id===STATION&&o.is_buy_order===true&&o.volume_remain>0));
+   const pages=Number(response.headers.get('x-pages')||1);
+   if(page>=pages)break;
+   if(page===100)throw Error('Too many market pages; cannot verify full buy-order depth');
+  }
+  return all.sort((a,b)=>b.price-a.price);
+ })();
+ ordersCache.set(typeId,job);
+ try{return await job}catch(e){ordersCache.delete(typeId);throw e}
+}
+function fillValue(orders,qty){
+ let left=qty,total=0;
+ for(const o of orders){if(left<=0)break;const take=Math.min(left,o.volume_remain);total+=take*o.price;left-=take}
+ return left===0?total:null;
+}
+async function price(typeId,qty){return fillValue(await getOrders(typeId),qty)}
+function makeRow(item){
+ const wrap=document.createElement('div'),d=document.createElement('div');d.className='item';
+ const left=document.createElement('div'),check=document.createElement('input');
+ check.type='checkbox';check.style.width='auto';check.title='Mark handled';
+ check.addEventListener('change',()=>d.classList.toggle('done',check.checked));
+ const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';
+ name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
+ left.append(check,name);const right=document.createElement('span');right.className='number';
+ right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
+ if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
+ else if(item.action==='REPROCESS'){const note=document.createElement('div');note.className='hint';note.textContent=`Sell: ${isk(item.sell)} · Melt: ${isk(item.rep)} · Extra: ${isk(item.rep-item.sell)}`;wrap.append(note)}
+ return wrap;
+}
+function render(){
+ for(const [id,action] of [['sell','SELL'],['rep','REPROCESS'],['review','REVIEW']]){
+  const list=results.filter(x=>x.action===action).sort(sort),el=$(id);el.replaceChildren();
+  if(!list.length)el.textContent='No items';else list.forEach(x=>el.append(makeRow(x)));
+  const countId=action==='SELL'?'sellcount':action==='REPROCESS'?'repcount':'reviewcount';
+  $(countId).textContent=`(${list.length})`;
+ }
+ const valued=results.filter(x=>x.action!=='REVIEW');
+ const total=valued.reduce((s,x)=>s+x.best,0),extra=valued.reduce((s,x)=>s+x.best-x.sell,0);
+ $('summary').textContent=`Best verified value: ${isk(total)} | Extra vs selling all valued items: ${isk(extra)} | Items needing review: ${results.length-valued.length}`;
+ $('export').disabled=!results.length;
+ $('copysell').disabled=!results.some(x=>x.action==='SELL');
+ $('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
+}
+async function calculate(){
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];
+ try{
+  const {items,bad}=parseInventory($('inventory').value);
+  if(!items.length)throw Error('Paste valid EVE item rows first.');
+  const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
+  if(!Number.isFinite(y)||!Number.isFinite(t)||y<0||y>1||t<0||t>1)throw Error('Yield and tax must be 0–100%.');
+  if(!dataset){results=items.map(x=>({...x,action:'REVIEW',reason:'Automatic reprocessing dataset missing; no reliable recommendation possible.'}));render();$('status').textContent='Item import succeeded, but the EVE material dataset is not loaded. Check the data status above and run the GitHub data workflow.';return}
+  for(let i=0;i<items.length;i++){
+   const item=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${item.name}`;
+   await new Promise(resolve=>setTimeout(resolve,0));
+   const def=dataset[item.name.toLowerCase()];
+   if(!def){results.push({...item,action:'REVIEW',reason:'No verified one-unit reprocessing recipe for this item.'});render();continue}
+   try{
+    const sell=await price(def.id,item.qty);
+    if(sell===null){results.push({...item,action:'REVIEW',reason:'Insufficient Jita 4-4 buy-order volume for entire item stack.'});render();continue}
+    let rep=0,failure=null;
+    for(const [materialId,amount] of def.materials){
+     if(!Number.isSafeInteger(amount)||amount<=0){failure='Invalid material quantity';break}
+     // Round recovered material units down separately, not the ISK value.
+     const units=Math.floor(amount*item.qty*y*(1-t));
+     if(units===0)continue;
+     const materialValue=await price(materialId,units);
+     if(materialValue===null){failure=`Insufficient Jita buy orders for material type ${materialId}`;break}
+     rep+=materialValue;
+    }
+    if(failure)results.push({...item,action:'REVIEW',reason:failure});
+    else results.push({...item,sell,rep,best:Math.max(sell,rep),action:rep>sell?'REPROCESS':'SELL'});
+   }catch(e){results.push({...item,action:'REVIEW',reason:'Market lookup failed: '+e.message})}
+   render();
+  }
+  $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
+ }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}
+ finally{btn.disabled=false}
+}
+function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
+$('go').addEventListener('click',calculate);
+$('copysell').addEventListener('click',()=>copyList('SELL'));
+$('copyrep').addEventListener('click',()=>copyList('REPROCESS'));
+$('export').addEventListener('click',()=>{
+ const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';
+ const lines=['Item,Quantity,Action,Sell ISK,Reprocess ISK,Best ISK,Reason'];
+ for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',q(r.reason)].join(','));
+ const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');
+ a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+loadData();
