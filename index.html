@@ -17,6 +17,15 @@ h1,h2{letter-spacing:.025em}
 .summary-value{font-family:"Shentox Site",system-ui,Arial,sans-serif;font-weight:600;font-size:clamp(1.1rem,2vw,1.55rem);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .summary-value.gain{color:#a1e6b3}
 .summary-label.with-icon{display:flex;align-items:center;gap:9px;min-height:32px}.summary-label.with-icon img{width:28px;height:28px;object-fit:contain;flex:none}
+.summary-section{background:#101b2d;border:1px solid #35465f;border-radius:12px;padding:16px;margin:14px 0}
+.summary-section h3{font-family:"Shentox Site",system-ui,Arial,sans-serif;font-size:1.08rem;margin:0 0 12px;color:#e9eff9}
+.summary-section>.summary-card{margin-top:12px}
+.summary-section>.summary-grid{margin:0}
+.summary-section .summary-card{background:#17253b}
+.summary-card.gain{background:#122b28;border-color:#346451}
+.summary-description{font-size:.85rem;color:#a7b6cc;line-height:1.45;margin:8px 0 0}
+.summary-card.gain .summary-description{color:#b9dccc}
+#summary{line-height:1.45}
 </style></head><body>
 <h1>Every Little Bit</h1><small>Jita 4-4 buy orders • 55% default yield • no EVE login</small>
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Make sure all your items are repackaged and stacked. Copy items directly from your hangar or boxes and paste into the box below o7</p>
@@ -28,5 +37,5 @@ h1,h2{letter-spacing:.025em}
 <div class="panel"><label for="search">Find an item in the results</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
 
-<div class="panel"><h2>Summary</h2><p id="summary">No verified results yet.</p><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Items without reliable valuations will be flagged in the calculation status. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
-<script src="app.js?v=20" defer></script></body></html>
+<div class="panel"><h2>Summary</h2><div id="summary">No verified results yet.</div><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Items without reliable valuations will be flagged in the calculation status. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
+<script src="app.js?v=41" defer></script></body></html>
