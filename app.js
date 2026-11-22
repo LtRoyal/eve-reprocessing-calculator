@@ -93,13 +93,13 @@ function render(){
    'Estimated proceeds if you sell every imported item directly to Jita 4-4 buy orders.'});
  summary.append(baselineSection);
  const recommended=document.createElement('section');recommended.className='summary-section';
- const recommendedHeading=document.createElement('h3');recommendedHeading.textContent='2. Following Every Little Bit recommendations';recommended.append(recommendedHeading);
+ const recommendedHeading=document.createElement('h3');recommendedHeading.textContent='2. Following Every Little Bit\'s recommendations';recommended.append(recommendedHeading);
  const grid=document.createElement('div');grid.className='summary-grid';
  addCard(grid,'ISK from selling',isk(sellTotal),{icon:'sell-icon.png',description:'Value of items the calculator recommends selling.'});
  addCard(grid,'ISK from reprocessing',isk(meltTotal),{icon:'reprocess-icon.png',description:'Value of recovered materials sold to Jita buy orders.'});
  recommended.append(grid);
  addCard(recommended,'Total potential ISK',isk(total),{description:'Combined estimated value from the recommended SELL and REPROCESS lists.'});
- addCard(recommended,'Extra ISK from smarter decisions','+'+isk(extra),{kind:'gain',description:'Additional potential ISK compared with selling the same comparable items directly to buy orders. Already included in the total above.'});
+ addCard(recommended,'Extra ISK from using Every Little Bit','+'+isk(extra),{kind:'gain',description:'Additional potential ISK compared with selling the same comparable items directly to buy orders. Already included in the total above.'});
  summary.append(recommended);
  if(missingSell){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${missingSell} recommended item type(s) lack a verified direct-sale value. The sell-everything baseline is partial, and their reprocessing value is not counted as verified extra ISK.`;summary.append(warning)}
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item type(s) could not be valued and are excluded from the totals. See the calculation status; export CSV for reasons.`;summary.append(warning)}
