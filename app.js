@@ -30,7 +30,16 @@ function parseInventory(text){
    else{bad.push(i+1);return}
   }else{
    const m=line.trim().match(/^(.*?)\s{2,}(\d[\d,]*)(?:\s{2,}.*)?$/);
-   if(m){name=m[1].trim();qty=Number(m[2].replaceAll(',',''))}else name=line.trim();
+   if(m){name=m[1].trim();qty=Number(m[2].replaceAll(',',''))}
+   else{
+    name=line.trim();
+    // Single-space quantities are accepted only for a verified item name.
+    // This avoids misreading legitimate EVE item names ending in numbers.
+    const trailing=name.match(/^(.*?)\s+(\d[\d,]*)$/);
+    if(trailing && dataset && Object.prototype.hasOwnProperty.call(dataset,trailing[1].trim().toLowerCase())){
+     name=trailing[1].trim();qty=Number(trailing[2].replaceAll(',',''));
+    }
+   }
   }
   if(!name||!Number.isSafeInteger(qty)||qty<1){bad.push(i+1);return}
   const key=name.toLowerCase(),old=map.get(key);
