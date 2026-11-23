@@ -28,6 +28,32 @@ h1,h2{letter-spacing:.025em}
 #summary{line-height:1.45}
 /* Responsive banner: preserve original proportions, no stretching. */
 .site-banner{display:block;width:100%;height:auto;object-fit:contain;margin:0 0 14px;border-radius:6px}
+
+/* Every Little Bit branding: cyan Jita selling, gold ISK reprocessing. */
+:root{--jita-cyan:#53dff2;--jita-border:#168da7;--isk-gold:#ffd35a;--isk-border:#a77b27}
+/* Accent the existing panels without changing layout or calculator behavior. */
+body > .panel:first-of-type{border-color:#287f96;border-top:2px solid var(--jita-cyan)}
+body > .panel:first-of-type h2{color:#d5faff}
+#inventory:focus,#search:focus,.controls input:focus{outline:2px solid #36c7df;outline-offset:1px;border-color:#36c7df}
+#go{background:#087f9c;color:#fff}
+#go:hover:not(:disabled){background:#0c9cbb}
+#copysell{background:#176b82}
+#copysell:hover:not(:disabled){background:#198ca7}
+#copyrep{background:#987020;color:#fff}
+#copyrep:hover:not(:disabled){background:#b58a2d}
+/* SELL and REPROCESS are the two panels inside the results grid. */
+.grid > .panel:first-child{border-color:var(--jita-border);border-top:2px solid var(--jita-cyan)}
+.grid > .panel:first-child h2,.grid > .panel:first-child .number{color:var(--jita-cyan)}
+.grid > .panel:last-child{border-color:var(--isk-border);border-top:2px solid var(--isk-gold)}
+.grid > .panel:last-child h2,.grid > .panel:last-child .number{color:var(--isk-gold)}
+/* Summary panel, while preserving existing gain/loss semantics. */
+body > .panel:has(> #summary){border-top:2px solid var(--isk-gold)}
+body > .panel:has(> #summary) > h2{color:#ffe29a}
+#summary .summary-card{border-color:#43546c}
+#summary .summary-card.gain{border-color:#346451}
+#summary .summary-value:not(.gain){color:#f3d17b}
+#summary .summary-value.gain{color:#a1e6b3}
+@media(max-width:600px){.grid > .panel{border-top-width:2px}}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Make sure all your items are repackaged and stacked. Copy items directly from your hangar or boxes and paste into the box below o7</p>
