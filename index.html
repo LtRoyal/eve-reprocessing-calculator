@@ -70,6 +70,12 @@ body > .panel:has(> #summary) > h2{color:#ffe29a}
 #summary .summary-grid > .summary-card:nth-child(4){border-color:#53617a}
 #summary .summary-grid > .summary-card:nth-child(4) .summary-value{color:#f1f3f8}
 #summary .summary-card.gain{grid-column:1/-1;background:#122b28;border-color:#346451}
+/* The fifth card is the gain card; app.js may not add .gain to its outer element. */
+/* Swap the visual positions of total potential and all-melt cards. */
+#summary .summary-grid > .summary-card:nth-child(3){order:4}
+#summary .summary-grid > .summary-card:nth-child(4){order:3}
+#summary .summary-grid > .summary-card:nth-child(5){grid-column:1/-1;background:#122b28;border-color:#346451}
+#summary .summary-grid > .summary-card:nth-child(5) .summary-value{color:#a1e6b3}
 #summary .summary-card.gain .summary-value{color:#a1e6b3}
 #summary .summary-section > .summary-card.gain{width:100%}
 #summary .summary-description{text-align:center}
