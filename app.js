@@ -103,14 +103,16 @@ function render(){
  const leftoverTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+(x.leftoverValue||0),0);
  const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0)+leftoverTotal;
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.meltValue,0);
- const allMeltKnown=results.length>0 && results.every(x=>x.meltValue!=null && x.meltValuationComplete===true);
- const allMeltTotal=results.reduce((s,x)=>s+(x.meltValuationComplete===true?x.meltValue:0),0);
+ const meltVerified=results.filter(x=>x.meltValue!=null && x.meltValuationComplete===true);
+ const meltMissing=results.filter(x=>x.meltValue==null || x.meltValuationComplete!==true);
+ const allMeltKnown=results.length>0 && meltMissing.length===0;
+ const allMeltTotal=meltVerified.reduce((s,x)=>s+x.meltValue,0);
  const reviewCount=results.length-valued.length;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},
   {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'},
-  {label:'Total ISK if everything was melted',value:allMeltKnown?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
+  {label:allMeltKnown?'Total ISK if everything was melted':'Verified partial all-melt ISK',value:meltVerified.length?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
   {label:'Total potential ISK',value:isk(total)},
   {label:'ISK made with calculator',value:isk(extra),kind:'gain'}
  ];
@@ -125,7 +127,7 @@ function render(){
  }
  summary.append(grid);
  const meltNote=document.createElement('p');meltNote.className='hint note';
- meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Items below their SDE minimum reprocessing batch contribute zero; leftover rounds are excluded.':'All-melt total is unavailable because one or more items lack verified reprocessing recipes or material prices. No partial total is shown.';
+ meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Items below their SDE minimum reprocessing batch contribute zero; leftover rounds are excluded.':`Full all-melt total unavailable: ${meltMissing.length} of ${results.length} item(s) lack verified melt values. ${meltVerified.length?'The figure above is a verified partial total, NOT the value of melting everything.':'No verified melting values are available.'} Missing: ${meltMissing.slice(0,8).map(x=>x.name).join(', ')}${meltMissing.length>8?', …':''}. Leftover units are excluded.`;
  summary.append(meltNote);
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
@@ -162,7 +164,7 @@ async function calculate(){
     let meltValue=0,failure=null;
     if(meltQty===0){
      if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than ${portion} units required for a reprocessing batch; remaining ${remainder} must be sold.`});
-     else results.push({...item,action:'REVIEW',reason:'Below the minimum reprocessing batch and insufficient Jita buy orders to sell them.'});
+     else results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,action:'REVIEW',reason:'Below the minimum reprocessing batch and insufficient Jita buy orders to sell them.'});
      render();continue;
     }
     for(const[materialId,amount]of def.materials){
