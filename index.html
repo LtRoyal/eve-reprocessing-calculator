@@ -26,8 +26,10 @@ h1,h2{letter-spacing:.025em}
 .summary-description{font-size:.85rem;color:#a7b6cc;line-height:1.45;margin:8px 0 0}
 .summary-card.gain .summary-description{color:#b9dccc}
 #summary{line-height:1.45}
+/* Responsive banner: preserve original proportions, no stretching. */
+.site-banner{display:block;width:100%;height:auto;object-fit:contain;margin:0 0 14px;border-radius:6px}
 </style></head><body>
-<h1>Every Little Bit</h1><small>Jita 4-4 buy orders • 55% default yield • no EVE login</small>
+<header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Make sure all your items are repackaged and stacked. Copy items directly from your hangar or boxes and paste into the box below o7</p>
 <textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
