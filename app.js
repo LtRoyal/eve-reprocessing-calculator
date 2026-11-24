@@ -11,8 +11,7 @@ function updateMarketInfo(){
  let el=$('marketDataInfo');
  if(!el){el=document.createElement('p');el.id='marketDataInfo';el.className='hint note';el.style.cssText='line-height:1.6;margin:10px 0;white-space:pre-line';$('dataStatus').insertAdjacentElement('afterend',el)}
  const cache=marketInfo.requests?`${marketInfo.requests} market API request(s); ${marketInfo.reused} cached result(s) reused in this calculation.`:'No market orders requested yet.';
- const age=marketInfo.ageSeconds==null?'Not reported':`${marketInfo.ageSeconds} seconds (HTTP Age header)`;
- el.textContent=`Market source: CCP EVE ESI — The Forge, Jita 4-4 station buy orders.\nLast market request: ${marketTime(marketInfo.lastFetched)}.\nESI response Date: ${marketTime(marketInfo.esiDate)} · Reported cache age: ${age}.\nReprocessing recipe file generated: ${marketInfo.recipeGenerated||'Unknown'}.\n${cache} Retrieval time is not the time CCP last changed prices; ESI data may be cached.`;
+ el.textContent=`Market source: CCP EVE ESI — The Forge, Jita 4-4 station buy orders.\nLast market request: ${marketTime(marketInfo.lastFetched)}.\nReprocessing recipe file generated: ${marketInfo.recipeGenerated||'Unknown'}.\n${cache} Retrieval time is not the time CCP last changed prices; ESI data may be cached.`;
 }
 updateMarketInfo();
 // Identify ammunition using ESI type/group metadata, not a name substring.
