@@ -113,6 +113,19 @@ body > .panel:first-of-type{border:2px solid #287f96}
 .no-buy-panel{border:2px solid #b07839}
 body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #summary .summary-card{border-width:2px;border-style:solid}
+
+/* Summary groups: visual-only; calculator totals and ordering remain unchanged. */
+#summary .summary-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;color:#e3eaf5;font-weight:600;font-size:1.05rem;line-height:1.4;padding:4px 0 0}
+#summary .summary-heading img{display:block;width:24px;height:24px;object-fit:contain;flex:0 0 24px}
+#summary .summary-heading.alternatives{padding-top:10px}
+#summary .summary-heading .alt-icon{font-size:20px;line-height:1}
+#summary .summary-grid > .summary-heading.recommended{order:0}
+#summary .summary-grid > .summary-card:nth-child(1){order:1}
+#summary .summary-grid > .summary-card:nth-child(2){order:2}
+#summary .summary-grid > .summary-card:nth-child(5){order:3}
+#summary .summary-grid > .summary-heading.alternatives{order:4}
+#summary .summary-grid > .summary-card:nth-child(4){order:5}
+#summary .summary-grid > .summary-card:nth-child(3){order:6}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -145,8 +158,26 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
       }
     });
   };
-  new MutationObserver(rename).observe(summary,{childList:true,subtree:true});
-  rename();
+  const addHeadings=()=>{
+    const grid=summary.querySelector('.summary-grid');
+    if(!grid || grid.querySelectorAll(':scope > .summary-card').length < 5)return;
+    if(!grid.querySelector(':scope > .summary-heading.recommended')){
+      const heading=document.createElement('div');
+      heading.className='summary-heading recommended';
+      const logo=document.createElement('img');logo.src='every-little-bit-logo.png';logo.alt='';logo.setAttribute('aria-hidden','true');
+      const title=document.createElement('span');title.textContent='Every Little Bit — Recommended Returns';
+      heading.append(logo,title);grid.prepend(heading);
+    }
+    if(!grid.querySelector(':scope > .summary-heading.alternatives')){
+      const heading=document.createElement('div');heading.className='summary-heading alternatives';
+      const symbol=document.createElement('span');symbol.className='alt-icon';symbol.textContent='⚖';symbol.setAttribute('aria-hidden','true');
+      const title=document.createElement('span');title.textContent='Alternative Scenarios';
+      heading.append(symbol,title);grid.append(heading);
+    }
+  };
+  const update=()=>{rename();addHeadings()};
+  new MutationObserver(update).observe(summary,{childList:true,subtree:true});
+  update();
 })();
 </script>
 <script src="app.js?v=46" defer></script></body></html>
