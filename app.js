@@ -127,7 +127,7 @@ function render(){
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},
   {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'},
   {label:allMeltKnown?(sellOnlyCount?'Total ISK if all meltable items were melted':'Total ISK if everything was melted'):'Verified partial all-melt ISK',value:meltVerified.length?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
-  {label:'Total potential ISK',value:isk(total)},
+  {label:'Total potential ISK',value:isk(total),icon:'sell-icon.png'},
   {label:'ISK made with calculator',value:isk(extra),kind:'gain'}
  ];
  const grid=document.createElement('div');grid.className='summary-grid';
