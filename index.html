@@ -153,12 +153,6 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .search-chevron{display:block;width:10px;height:10px;box-sizing:border-box;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease;color:#a7b6cc;flex:none;margin:0 5px}
 #search-details[open] .search-chevron{transform:rotate(225deg)}
 .search-content{padding-top:15px}
-/* Small, readable status directly above market provenance details. */
-.market-reliability{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;border:2px solid #546680;border-radius:9px;padding:10px 13px;margin:12px 0 4px;background:#101b2d;line-height:1.5}
-.market-reliability strong{font-weight:700}.market-reliability span{color:#c2ccda;font-size:.9rem}
-.market-reliability.good{border-color:#346451}.market-reliability.good strong{color:#a1e6b3}
-.market-reliability.warn{border-color:#b07839}.market-reliability.warn strong{color:#ffb86b}
-.market-reliability.bad{border-color:#a94b47}.market-reliability.bad strong{color:#ffb4a9}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -168,7 +162,6 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 <div class="panel"><h2>1. Inventory</h2><p class="hint">Copy items directly from your hangar or containers and paste them into the box below. Repackaging and stacking are not required. o7</p>
 <textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
-<div id="marketReliability" class="market-reliability neutral" role="status" aria-live="polite"></div>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
 <div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button><button id="share" type="button">Share Inventory Link</button></div>
 <p id="status" class="status hint" role="status">Ready.</p></div>
@@ -225,4 +218,4 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   update();
 })();
 </script>
-<script src="app.js?v=48" defer></script></body></html>
+<script src="app.js?v=57" defer></script></body></html>
