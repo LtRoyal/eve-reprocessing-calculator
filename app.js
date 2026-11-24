@@ -308,33 +308,27 @@ $('export').addEventListener('click',()=>{
 });loadData();
 
 
-// Frozen share links contain a compressed, self-contained copy of this calculation.
-// No backend or external link-shortener is used. Anyone with the URL can read the inventory.
+// Short frozen snapshots are stored in Cloudflare KV by the public Worker.
+// Legacy self-contained snapshot URLs remain readable for older shared links.
+const SNAPSHOT_API='https://dry-lake-db71every-little-bit-snapshots.armarlio2nd.workers.dev';
 const snapshotPrefix='elb-snapshot-v1=';
-function bytesToBase64url(bytes){
- let output='';for(let i=0;i<bytes.length;i+=8192)output+=String.fromCharCode(...bytes.subarray(i,i+8192));
- return btoa(output).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
 function base64urlToBytes(value){
  const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));
  return Uint8Array.from(raw,c=>c.charCodeAt(0));
 }
-async function encodeSnapshot(data){
- const bytes=new TextEncoder().encode(JSON.stringify(data));
- if(typeof CompressionStream!=='undefined'){
-  const stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
-  return 'g'+bytesToBase64url(new Uint8Array(await new Response(stream).arrayBuffer()));
- }
- return 'p'+bytesToBase64url(bytes);
-}
 async function decodeSnapshot(payload){
  const bytes=base64urlToBytes(payload.slice(1));let decoded=bytes;
  if(payload[0]==='g'){
-  if(typeof DecompressionStream==='undefined')throw Error('This browser cannot decompress snapshot links. Try a current browser.');
-  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  decoded=new Uint8Array(await new Response(stream).arrayBuffer());
+  if(typeof DecompressionStream==='undefined')throw Error('This browser cannot decompress older snapshot links.');
+  decoded=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
  }else if(payload[0]!=='p')throw Error('Unknown snapshot encoding');
  return JSON.parse(new TextDecoder().decode(decoded));
+}
+async function snapshotResponseError(response){
+ let message=`HTTP ${response.status}`;
+ try{const data=await response.json();if(data.error)message=data.error;}catch(e){}
+ if(response.status===413)message+=' — this inventory exceeds the snapshot storage limit (100 KB).';
+ return new Error(message);
 }
 function snapshotMessage(message){const el=$('share-status');el.hidden=false;el.textContent=message;}
 function snapshotNotice(when){
@@ -344,9 +338,8 @@ function snapshotNotice(when){
 }
 async function createShareSnapshot(){
  const button=$('share');if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
- button.disabled=true;snapshotMessage('Preparing frozen snapshot and material breakdown…');
+ button.disabled=true;snapshotMessage('Saving frozen snapshot to Cloudflare…');
  try{
-  // Force the breakdown to load, so the shared link preserves material names and prices too.
   const details=$('breakdown-details');details.open=true;
   await showBreakdown();
   if(breakdownLoaded!==breakdownVersion)throw Error('The material breakdown could not finish loading. Please try again.');
@@ -354,24 +347,27 @@ async function createShareSnapshot(){
    yield:$('yield').value,tax:$('tax').value,results,
    status:$('status').textContent,breakdownStatus:$('breakdown-status').textContent,
    breakdownHTML:$('breakdown-body').innerHTML,
-   recipeGenerated:marketInfo.recipeGenerated,
-   marketFetched:marketInfo.lastFetched};
-  const payload=await encodeSnapshot(data);
-  const url=new URL(location.href);url.hash=snapshotPrefix+payload;
-  if(url.href.length>16000){snapshotMessage(`Snapshot is ${url.href.length.toLocaleString()} characters long and may exceed some chat apps' link limits. Try a smaller inventory or share the link as a text file.`)}
-  else snapshotMessage('Frozen snapshot link copied. Anyone with the link can view this inventory and its saved results.');
-  try{await navigator.clipboard.writeText(url.href)}catch(e){
-   snapshotMessage('Clipboard unavailable. Copy the link from the field below.');
-   let input=$('snapshot-link');if(!input){input=document.createElement('textarea');input.id='snapshot-link';input.readOnly=true;input.style.height='85px';$('share-status').insertAdjacentElement('afterend',input)}
-   input.value=url.href;input.focus();input.select();
-  }
- }catch(e){snapshotMessage('Unable to create snapshot: '+e.message)}finally{button.disabled=false}
+   recipeGenerated:marketInfo.recipeGenerated,marketFetched:marketInfo.lastFetched};
+  const response=await fetch(SNAPSHOT_API+'/snapshots',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
+  });
+  if(!response.ok)throw await snapshotResponseError(response);
+  const saved=await response.json();
+  if(!/^[a-f0-9]{24}$/.test(saved.id||''))throw Error('Snapshot service returned an invalid ID.');
+  const url=new URL(location.pathname,location.origin);url.searchParams.set('s',saved.id);
+  const link=url.href;
+  let input=$('snapshot-link');
+  if(!input){input=document.createElement('input');input.id='snapshot-link';input.readOnly=true;
+   input.setAttribute('aria-label','Shareable snapshot link');
+   $('share-status').insertAdjacentElement('afterend',input)}
+  input.value=link;input.hidden=false;
+  try{await navigator.clipboard.writeText(link);
+   snapshotMessage('Short frozen snapshot link copied! It expires in 30 days. Anyone with the link can see the inventory and saved results.');
+  }catch(e){snapshotMessage('Snapshot saved! Copy the short link from the field below.');input.focus();input.select();}
+ }catch(e){snapshotMessage('Unable to save snapshot: '+e.message)}finally{button.disabled=false}
 }
-async function restoreShareSnapshot(){
- const fragment=location.hash.slice(1);if(!fragment.startsWith(snapshotPrefix))return;
- try{
-  const data=await decodeSnapshot(fragment.slice(snapshotPrefix.length));
-  if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
+function applyShareSnapshot(data){
+ if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
   $('inventory').value=data.inventory;$('yield').value=data.yield;$('tax').value=data.tax;
   results=data.results;render();$('status').textContent=data.status||'Frozen calculation restored.';
   breakdownVersion++;breakdownLoaded=breakdownVersion;
@@ -390,6 +386,21 @@ async function restoreShareSnapshot(){
   $('breakdown-details').open=false;
   snapshotNotice(data.created);
   snapshotMessage('Viewing a frozen snapshot. The figures will not change until you click Calculate.');
+ }
+async function restoreShareSnapshot(){
+ const id=new URL(location.href).searchParams.get('s');
+ const fragment=location.hash.slice(1);
+ if(!id&&!fragment.startsWith(snapshotPrefix))return;
+ snapshotMessage('Loading frozen snapshot…');
+ try{
+  let data;
+  if(id){
+   if(!/^[a-f0-9]{24}$/.test(id))throw Error('Invalid snapshot ID');
+   const response=await fetch(SNAPSHOT_API+'/snapshots/'+id);
+   if(!response.ok)throw await snapshotResponseError(response);
+   data=await response.json();
+  }else data=await decodeSnapshot(fragment.slice(snapshotPrefix.length));
+  applyShareSnapshot(data);
  }catch(e){snapshotMessage('This snapshot link could not be opened: '+e.message)}
 }
 $('share').addEventListener('click',createShareSnapshot);
