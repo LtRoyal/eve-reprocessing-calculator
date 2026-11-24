@@ -92,7 +92,7 @@ function makeRow(item){
  name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
  left.append(name);if(item.ammo&&item.action==='REPROCESS'){const detail=document.createElement('div');detail.className='hint note';detail.textContent=`Reprocess ${item.meltQty.toLocaleString('en-GB')} · Remaining ${item.remainder.toLocaleString('en-GB')} (sell)`;left.append(detail)}const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
  if(item.action==='NO_BUY'){const note=document.createElement('div');note.className='hint note';note.textContent=item.buyStatus||'No valid buy orders for the full quantity';wrap.append(note);if(item.meltValuationComplete&&item.meltValue!=null){const value=document.createElement('div');value.className='hint note';value.textContent=`Potential reprocessing value: ${isk(item.meltValue)} (not a verified gain over selling)`;wrap.append(value)}}
- if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='Sell only · No reprocessing recipe in current EVE data';wrap.append(note)}
+ if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='No reprocessing recipe available; better to sell to buy orders';wrap.append(note)}
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
  if(item.action==='REPROCESS'){
   const note=document.createElement('div');note.className='hint note';
@@ -161,7 +161,6 @@ async function calculate(){
      try{
       const typeId=await resolveTypeId(item.name);
       const sell=await price(typeId,item.qty);
-      const reason='No verified reprocessing recipe available; melt comparison cannot be calculated.';
       if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,sellOnly:true,meltValue:null,meltValuationComplete:false});
       else results.push({...item,action:'NO_BUY',sell:null,sellOnly:true,buyStatus:await buyOrderStatus(typeId,item.qty),meltValue:null,meltValuationComplete:false});
      }catch(e){results.push({...item,action:'REVIEW',meltValue:null,meltValuationComplete:false,reason:'Missing recipe; item/market lookup failed: '+e.message})}
