@@ -16,6 +16,25 @@ function updateMarketInfo(){
  el.textContent=`Market source: Fenris Creations (formerly CCP Games) EVE ESI — The Forge, Jita 4-4 station buy orders.\nLast market request: ${marketTime(marketInfo.lastFetched)}.\nReprocessing recipe file generated: ${marketInfo.recipeGenerated||'Unknown'}.\n${cache} Retrieval time is not the time Fenris Creations last changed prices; ESI data may be cached.`;
 }
 updateMarketInfo();
+// Reliability reflects this calculation's outcomes, not a guarantee of price freshness.
+let reliabilityState='idle',reliabilityErrors=0,reliabilityMessage='Run a calculation to check market-data reliability.';
+function updateReliability(){
+ const el=$('marketReliability');if(!el)return;
+ const config={idle:['Not checked','neutral'],running:['Checking market data…','neutral'],good:['Market lookups successful','good'],limited:['Limited buy-order availability','warn'],error:['Market lookup issues','bad']};
+ const [label,level]=config[reliabilityState];el.className='market-reliability '+level;
+ el.replaceChildren();const heading=document.createElement('strong');heading.textContent='Market data reliability: '+label;
+ const detail=document.createElement('span');detail.textContent=reliabilityMessage;el.append(heading,detail);
+}
+function finishReliability(){
+ const review=results.filter(x=>x.action==='REVIEW').length;
+ const noBuy=results.filter(x=>x.action==='NO_BUY').length;
+ const incomplete=results.filter(x=>x.action==='SELL' && x.reason && /comparison unavailable/i.test(x.reason)).length;
+ if(reliabilityErrors||review||incomplete){reliabilityState='error';reliabilityMessage=`${reliabilityErrors} failed market request(s); ${review} item(s) need review; ${incomplete} reprocessing comparison(s) incomplete. Check item notes before relying on totals.`;}
+ else if(noBuy){reliabilityState='limited';reliabilityMessage=`${noBuy} item(s) lack sufficient Jita 4-4 buy-order volume. They are excluded from verified comparisons.`;}
+ else if(results.length){reliabilityState='good';reliabilityMessage=`No market request failures or missing buy-order volume detected for ${results.length} item(s). Prices may still be cached by ESI.`;}
+ else{reliabilityState='idle';reliabilityMessage='No items have been checked.';}
+ updateReliability();
+}
 // Identify ammunition using ESI type/group metadata, not a name substring.
 async function isAmmo(typeId){
  if(ammoCache.has(typeId))return ammoCache.get(typeId);
@@ -101,7 +120,7 @@ async function getOrders(typeId){
    const pages=Number(response.headers.get('x-pages')||1);if(page>=pages)break;
    if(page===100)throw Error('Too many market pages; cannot verify full buy-order depth');
   }return all.sort((a,b)=>b.price-a.price);
- })();ordersCache.set(typeId,job);try{return await job}catch(e){ordersCache.delete(typeId);throw e}
+ })();ordersCache.set(typeId,job);try{return await job}catch(e){ordersCache.delete(typeId);reliabilityErrors++;updateReliability();throw e}
 }
 function fillValue(orders,qty){let left=qty,total=0;for(const o of orders){if(left<=0)break;const take=Math.min(left,o.volume_remain);total+=take*o.price;left-=take}return left===0?total:null}
 async function price(typeId,qty){return fillValue(await getOrders(typeId),qty)}
@@ -170,7 +189,7 @@ function render(){
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;reliabilityErrors=0;reliabilityState='running';reliabilityMessage='Checking Jita 4-4 buy orders and item valuations…';updateMarketInfo();updateReliability();
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
@@ -225,7 +244,7 @@ async function calculate(){
    render();
   }
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
- }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
+ }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false;finishReliability()}
 }
 
 // The expandable material table is informational and never changes recommendations.
@@ -301,4 +320,4 @@ $('export').addEventListener('click',()=>{
  const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';const lines=['Item,Quantity,Action,Sell ISK,Reprocess + Leftovers ISK,Best ISK,Reprocess Quantity,Remaining Quantity,Reason'];
  for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',r.meltQty??'',r.remainder??'',q(r.reason||r.buyStatus)].join(','));
  const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-});loadData();
+});updateReliability();loadData();
