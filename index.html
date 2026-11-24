@@ -143,6 +143,15 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .breakdown-unavailable td:last-child{color:#ffb4a9}
 .breakdown-total{text-align:right;font-family:"Shentox Site",system-ui,Arial,sans-serif;color:var(--isk-gold);font-size:1.18rem;padding:14px 9px 4px}
 @media(max-width:520px){.breakdown-table th,.breakdown-table td{padding:9px 5px;font-size:.82rem}}
+
+/* Collapsible item search: same filtering behaviour, less screen space when closed. */
+.search-panel{display:block}
+.search-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;font-family:"Shentox Site",system-ui,Arial,sans-serif;font-weight:600;font-size:1.08rem;letter-spacing:.015em;padding:3px 0}
+.search-toggle::-webkit-details-marker{display:none}
+.search-toggle:focus-visible{outline:2px solid var(--jita-cyan);outline-offset:4px;border-radius:3px}
+.search-chevron{font-size:1.6rem;line-height:1;transition:transform .15s ease;color:#a7b6cc}
+#search-details[open] .search-chevron{transform:rotate(180deg)}
+.search-content{padding-top:15px}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -155,7 +164,10 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
 <div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button><button id="share" type="button">Share Inventory Link</button></div>
 <p id="status" class="status hint" role="status">Ready.</p></div>
-<div class="panel"><label for="search">Find an item in the results</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
+<details class="panel search-panel" id="search-details">
+ <summary class="search-toggle"><span>Find an item in the results</span><span class="search-chevron" aria-hidden="true">⌄</span></summary>
+ <div class="search-content"><label for="search">Search item names</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
+</details>
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">Better to SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">Better to REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
 
 <div class="panel no-buy-panel" aria-label="Items without sufficient Jita buy orders"><h2><span class="no-buy-heading"><span aria-hidden="true">⚠</span> No Buy Orders Available <span id="nobuycount">(0)</span></span></h2><p class="hint note">Items with no Jita 4-4 buy orders or insufficient volume to sell the full quantity. Reprocessing values, when available, are informational—not a verified recommendation.</p><div id="nobuy" class="result-list">No items</div></div>
