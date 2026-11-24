@@ -6,7 +6,7 @@ let dataset=null,results=[];
 const ordersCache=new Map(),ammoCache=new Map();
 // ESI Date/HTTP Age describe the response, not a guaranteed market-price snapshot.
 const marketInfo={lastFetched:null,esiDate:null,ageSeconds:null,requests:0,reused:0,recipeGenerated:null};
-function marketTime(date){return date?new Date(date).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'medium',timeZoneName:'short'}):'Not yet retrieved'}
+function marketTime(date){if(!date)return 'Not yet retrieved';const d=new Date(date);if(Number.isNaN(d.getTime()))return 'Unknown';return d.toLocaleString('en-GB',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'});}
 function updateMarketInfo(){
  let el=$('marketDataInfo');
  if(!el){el=document.createElement('p');el.id='marketDataInfo';el.className='hint note';el.style.cssText='line-height:1.6;margin:10px 0;white-space:pre-line';$('dataStatus').insertAdjacentElement('afterend',el)}
