@@ -167,6 +167,15 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #snapshot-link{margin:8px 0 4px;font-size:.9rem}#snapshot-link[hidden]{display:none}
 .snapshot-notice{border:2px solid #a77b27;border-radius:10px;padding:12px 16px;margin:12px 0;background:#202b38;color:#ffe29a;line-height:1.5}
 #share-status{overflow-wrap:anywhere}
+
+/* Copy actions belong to their respective results panels. */
+.result-panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.result-panel-header h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;line-height:1.2;margin:8px 0;min-width:0}
+.result-panel-header h2 .section-icon{display:block;width:32px;height:32px;flex:0 0 32px;margin:0;vertical-align:initial}
+.result-panel-header button{flex:0 0 auto;white-space:nowrap}
+.grid>.panel:first-child .result-panel-header h2{color:var(--jita-cyan)}
+.grid>.panel:last-child .result-panel-header h2{color:var(--isk-gold)}
+@media(max-width:600px){.result-panel-header{align-items:flex-start}.result-panel-header button{max-width:100%}}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -177,13 +186,13 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 <textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
-<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="copysell" disabled>Copy SELL list</button><button id="copyrep" disabled>Copy REPROCESS list</button><button id="share" type="button">Share Results Snapshot</button><button id="copyinventory" type="button">Copy Inventory</button></div>
+<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="share" type="button">Share Results Snapshot</button><button id="copyinventory" type="button">Copy Inventory</button></div>
 <p id="share-status" class="hint note" role="status" hidden></p><p id="status" class="status hint" role="status">Ready.</p></div>
 <details class="panel search-panel" id="search-details">
  <summary class="search-toggle"><span>Find an item in the results</span><span class="search-chevron" aria-hidden="true"></span></summary>
  <div class="search-content"><label for="search">Search item names</label><input id="search" class="searchbar" type="search" placeholder="Search SELL and REPROCESS…"><p class="hint note">Each list scrolls independently. Search filters the visible results only; copying and CSV export still include all results.</p></div>
 </details>
-<div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">Better to SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">Better to REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
+<div class="grid"><div class="panel"><div class="result-panel-header"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">Better to SELL <span id="sellcount">(0)</span></h2><button id="copysell" type="button" disabled>Copy SELL list</button></div><div id="sell" class="result-list">No items yet</div></div><div class="panel"><div class="result-panel-header"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">Better to REPROCESS <span id="repcount">(0)</span></h2><button id="copyrep" type="button" disabled>Copy REPROCESS list</button></div><div id="rep" class="result-list">No items yet</div></div></div>
 
 <div id="noBuyPanel" class="panel no-buy-panel" aria-label="Items without sufficient Jita buy orders" hidden><h2><span class="no-buy-heading"><span aria-hidden="true">⚠</span> No Buy Orders Available <span id="nobuycount">(0)</span></span></h2><p class="hint note">Items with no Jita 4-4 buy orders or insufficient volume to sell the full quantity. Reprocessing values, when available, are informational—not a verified recommendation.</p><div id="nobuy" class="result-list">No items</div></div>
 
