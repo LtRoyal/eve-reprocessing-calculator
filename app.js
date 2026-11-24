@@ -4,6 +4,17 @@ const isk=n=>Number(n).toLocaleString('en-GB',{maximumFractionDigits:0})+' ISK';
 const sort=(a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'});
 let dataset=null,results=[];
 const ordersCache=new Map(),ammoCache=new Map();
+// ESI Date/HTTP Age describe the response, not a guaranteed market-price snapshot.
+const marketInfo={lastFetched:null,esiDate:null,ageSeconds:null,requests:0,reused:0,recipeGenerated:null};
+function marketTime(date){return date?new Date(date).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'medium',timeZoneName:'short'}):'Not yet retrieved'}
+function updateMarketInfo(){
+ let el=$('marketDataInfo');
+ if(!el){el=document.createElement('p');el.id='marketDataInfo';el.className='hint note';el.style.cssText='line-height:1.6;margin:10px 0;white-space:pre-line';$('dataStatus').insertAdjacentElement('afterend',el)}
+ const cache=marketInfo.requests?`${marketInfo.requests} market API request(s); ${marketInfo.reused} cached result(s) reused in this calculation.`:'No market orders requested yet.';
+ const age=marketInfo.ageSeconds==null?'Not reported':`${marketInfo.ageSeconds} seconds (HTTP Age header)`;
+ el.textContent=`Market source: CCP EVE ESI — The Forge, Jita 4-4 station buy orders.\nLast market request: ${marketTime(marketInfo.lastFetched)}.\nESI response Date: ${marketTime(marketInfo.esiDate)} · Reported cache age: ${age}.\nReprocessing recipe file generated: ${marketInfo.recipeGenerated||'Unknown'}.\n${cache} Retrieval time is not the time CCP last changed prices; ESI data may be cached.`;
+}
+updateMarketInfo();
 // Identify ammunition using ESI type/group metadata, not a name substring.
 async function isAmmo(typeId){
  if(ammoCache.has(typeId))return ammoCache.get(typeId);
@@ -54,7 +65,7 @@ function parseInventory(text){
 async function loadData(){
  try{const r=await fetch('./eve-data.json',{cache:'no-cache'});if(!r.ok)throw Error(`HTTP ${r.status}`);
   const data=await r.json();if(!data.items||Object.keys(data.items).length<1000)throw Error('Incomplete dataset');
-  dataset=data.items;$('dataStatus').textContent=`✓ Automatic EVE material data loaded (${Object.keys(dataset).length.toLocaleString()} recipes; ${data.generated?.slice(0,10)||'date unknown'}).`;
+  dataset=data.items;marketInfo.recipeGenerated=data.generated||null;updateMarketInfo();$('dataStatus').textContent=`✓ Automatic EVE material data loaded (${Object.keys(dataset).length.toLocaleString()} recipes; ${data.generated?.slice(0,10)||'date unknown'}).`;
  }catch(err){dataset=null;$('dataStatus').textContent='⚠ Automatic EVE material data not yet available. Run the GitHub Actions “Update EVE reprocessing data” workflow. Details: '+err.message}
 }
 const typeIdCache=new Map();
@@ -75,11 +86,15 @@ async function resolveTypeId(name){
  try{return await job}catch(e){typeIdCache.delete(key);throw e}
 }
 async function getOrders(typeId){
- if(ordersCache.has(typeId))return ordersCache.get(typeId);
+ if(ordersCache.has(typeId)){marketInfo.reused++;updateMarketInfo();return ordersCache.get(typeId);}
  const job=(async()=>{let all=[];
   for(let page=1;page<=100;page++){
    const url=`https://esi.evetech.net/latest/markets/${REGION}/orders/?order_type=buy&type_id=${typeId}&page=${page}`;
-   const response=await fetch(url);if(!response.ok)throw Error(`ESI error ${response.status} for type ${typeId}`);
+   const response=await fetch(url);marketInfo.lastFetched=new Date().toISOString();marketInfo.requests++;
+    const dateHeader=response.headers.get('date'),ageHeader=response.headers.get('age');
+    if(dateHeader&&!Number.isNaN(Date.parse(dateHeader)))marketInfo.esiDate=dateHeader;
+    if(ageHeader!==null&&Number.isFinite(Number(ageHeader)))marketInfo.ageSeconds=Number(ageHeader);
+    updateMarketInfo();if(!response.ok)throw Error(`ESI error ${response.status} for type ${typeId}`);
    const data=await response.json();if(!Array.isArray(data))throw Error('Unexpected ESI response');
    all.push(...data.filter(o=>o.location_id===STATION&&o.is_buy_order===true&&o.volume_remain>0));
    const pages=Number(response.headers.get('x-pages')||1);if(page>=pages)break;
@@ -153,7 +168,7 @@ function render(){
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
