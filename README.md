@@ -1,26 +1,62 @@
-# EVE Sell or Reprocess — GitHub Pages update
+# Every Little Bit
 
-This version removes the manual JSON upload. It uses an automated GitHub Actions workflow to download the EVE static data CSVs from Fuzzwork, builds `eve-data.json`, and then the GitHub Pages browser app fetches Jita 4-4 buy orders from CCP ESI.
+**Make every little bit of ISK count.**
 
-## Upload / enable
+Every Little Bit is a free, browser-based **EVE Online sell-or-reprocess calculator**. Paste an inventory list and compare what its items are worth when sold directly against what their recoverable materials are worth at **Jita 4-4 buy orders**.
 
-1. In your GitHub repository, upload/replace `index.html`, `app.js`, `build_data.py`, `README.md` in the **root**.
-2. Create the folder `.github/workflows/` and put `update-eve-data.yml` there (GitHub's **Add file → Create new file** can create the path `.github/workflows/update-eve-data.yml`; paste the workflow file contents). Alternatively use GitHub's upload feature and drag the entire `.github` folder if your browser supports folder uploads.
-3. Commit changes. In GitHub **Settings → Actions → General**, ensure workflow permissions allow **Read and write permissions** so the workflow can commit `eve-data.json`. You may need to enable Actions for the repository.
-4. Open the repository's **Actions** tab → **Update EVE reprocessing data** → **Run workflow** → select `main` → **Run workflow**. The workflow also runs on pushes to `build_data.py` and weekly.
-5. Wait for the workflow to finish successfully and for `eve-data.json` to appear in the repository root. Wait for GitHub Pages to deploy, then hard-refresh the site (Ctrl+Shift+R).
-6. The page should show **Automatic EVE material data loaded**. Paste inventory and press **Calculate**.
+**Website:** https://ltroyal.github.io/every-little-bit/
 
-If the workflow fails, open its run and send the **error text**. The website will display a missing-data message instead of inventing values.
+## What it does
 
-## Supported inventory format
+- Compares direct selling with reprocessing for eligible inventory items.
+- Separates recommendations into **Better to SELL** and **Better to REPROCESS** lists, sorted alphabetically.
+- Flags items without sufficient buy-order coverage separately instead of treating an uncertain value as a confirmed sale.
+- Shows estimated ISK totals, alternative all-sell/all-reprocess scenarios, and the additional ISK identified by the recommendations.
+- Provides a combined **Reprocessing Breakdown** of materials from items recommended for reprocessing.
+- Supports searching results, copying lists and inventory, and exporting results as CSV.
+- Creates shareable **frozen results snapshots**: recipients see the saved calculation rather than a fresh market-price lookup. Snapshots are stored temporarily through a Cloudflare Worker.
 
-`125mm Railgun I<TAB>2<TAB>Hybrid Weapon` — first column is the exact item name, second column is the quantity, and subsequent category columns are ignored. A name on its own is quantity 1. A quantity-first tab-separated line also works.
+## How to use
 
-## Calculation caveats
+1. Open [Every Little Bit](https://ltroyal.github.io/every-little-bit/).
+2. Paste your inventory into the input area. An item name on its own is treated as quantity **1**; tab-separated inventory lines with quantities are also supported.
+3. Review the **reprocessing yield** and **reprocessing tax** settings. The defaults are **55% yield** and **0% tax**.
+4. Select **Calculate**.
+5. Review the SELL and REPROCESS recommendations, the summary, and any items requiring additional attention.
 
-- Only **Jita 4-4 station** buy orders are included, including order-book depth, for the full item stack and all recovered materials.
-- Default yield is **55%**, as requested; reprocessing tax is configurable. The material-unit calculation is rounded down for each material. The calculator does not account for hauling, broker fees, sales tax, or item-specific reprocessing restrictions.
-- Only items with `portionSize=1` and a static `invTypeMaterials` recipe are eligible. Others go to **Needs review**. This is deliberately conservative; ore, ice and special batch-based items are not supported.
-- This data source and material mapping have **not been validated against a real live EVE appraisal** in this environment. Test with a few low-value items before using the recommendations to melt valuable items. If CCP's ESI does not allow cross-origin browser requests, market lookups will show an error and require an alternative hosting/API arrangement.
-- No Janice API key is used. ESI prices are subject to caching and rate limits.
+Use **Share Results Snapshot** to share the saved result of a calculation. Snapshot prices do not update automatically; run a new calculation to use newer market information.
+
+## Pricing and calculations
+
+- Market comparisons use **buy orders at Jita 4-4**, not sell-order asking prices.
+- Available buy-order volume matters: an order price is not assumed to apply to unlimited quantities.
+- Reprocessing values are based on the recoverable materials and the configured yield and tax.
+- Material quantities are rounded down to whole units.
+- Items with unsupported or unavailable material data may not receive a reprocessing recommendation.
+
+**Important:** These are estimates, not guaranteed sale proceeds. Buy orders can change or disappear, and the calculator does not include every possible cost or restriction (such as hauling, broker fees, sales tax, or item-specific reprocessing requirements). Double-check valuable items in-game before selling or reprocessing them.
+
+## Data updates
+
+The repository's GitHub Actions workflow, [Update EVE reprocessing data](.github/workflows/update-eve-data.yml), runs **daily at 11:30 UTC** and can also be started manually. It uses [`build_data.py`](build_data.py) to refresh [`eve-data.json`](eve-data.json) from EVE static data provided through Fuzzwork. The browser application obtains market buy-order information from CCP's ESI when calculating.
+
+The workflow also runs when its configuration or the data-building script changes. A scheduled run does not guarantee the upstream data changed or that the run succeeded; check the [Actions tab](https://github.com/LtRoyal/every-little-bit/actions) for status.
+
+## Repository files
+
+| File | Purpose |
+| --- | --- |
+| `index.html` | Website layout and styling |
+| `app.js` | Inventory processing, calculations, and sharing |
+| `eve-data.json` | Generated item and reprocessing data |
+| `build_data.py` | Data download and build script |
+| `.github/workflows/update-eve-data.yml` | Automated data refresh |
+| `*.png` | Site branding and interface images |
+
+## Notes on snapshots
+
+Short snapshot links use a Cloudflare Worker and temporary storage. They are intended for sharing results, not for permanent archiving. A frozen snapshot preserves the calculation at the time it was saved; it is **not** a live appraisal.
+
+## Disclaimer
+
+Every Little Bit is an independent community utility for EVE Online. EVE Online and related names and assets belong to their respective owners. This project is not affiliated with or endorsed by CCP Games.
