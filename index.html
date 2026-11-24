@@ -104,6 +104,15 @@ body > .panel:has(> #summary) > h2{color:#ffe29a}
 .no-buy-panel{border-color:#b07839;border-top:2px solid #ffb86b}
 .no-buy-panel h2,.no-buy-panel .number{color:#ffb86b}
 .no-buy-heading{display:inline-flex;align-items:center;gap:9px;flex-wrap:wrap}
+
+/* Uniform border thickness and colour on all four sides. */
+.panel{border-width:2px;border-style:solid}
+body > .panel:first-of-type{border:2px solid #287f96}
+.grid > .panel:first-child{border:2px solid var(--jita-border)}
+.grid > .panel:last-child{border:2px solid var(--isk-border)}
+.no-buy-panel{border:2px solid #b07839}
+body > .panel:has(> #summary){border:2px solid var(--isk-border)}
+#summary .summary-card{border-width:2px;border-style:solid}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
