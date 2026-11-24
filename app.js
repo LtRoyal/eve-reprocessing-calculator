@@ -311,6 +311,20 @@ $('export').addEventListener('click',()=>{
 
 // Short frozen snapshots are stored in Cloudflare KV by the public Worker.
 // Legacy self-contained snapshot URLs remain readable for older shared links.
+// Remove incoming marketing/tracking parameters from the visible address bar.
+// Preserve functional snapshot IDs, other query parameters and legacy snapshot fragments.
+(function cleanTrackingParameters(){
+ try{
+  const url=new URL(location.href);
+  let changed=false;
+  for(const key of [...url.searchParams.keys()]){
+   if(/^utm_/i.test(key)||/^(fbclid|gclid|dclid|gbraid|wbraid|msclkid|mc_cid|mc_eid)$/i.test(key)){
+    url.searchParams.delete(key);changed=true;
+   }
+  }
+  if(changed)history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+ }catch(e){/* URL cleanup should never interfere with the calculator. */}
+})();
 const SNAPSHOT_API='https://dry-lake-db71every-little-bit-snapshots.armarlio2nd.workers.dev';
 const snapshotPrefix='elb-snapshot-v1=';
 function base64urlToBytes(value){
