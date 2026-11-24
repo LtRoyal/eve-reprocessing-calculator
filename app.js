@@ -143,6 +143,7 @@ function render(){
  const allMeltTotal=meltVerified.reduce((s,x)=>s+x.meltValue,0);
  const reviewCount=results.filter(x=>x.action==='REVIEW').length;
  const noBuyCount=results.filter(x=>x.action==='NO_BUY').length;
+  $('noBuyPanel').hidden=noBuyCount===0;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},

@@ -101,6 +101,7 @@ body > .panel:has(> #summary) > h2{color:#ffe29a}
 .grid > .panel > h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;line-height:1.2}
 .grid > .panel > h2 .section-icon{display:block;width:32px;height:32px;flex:0 0 32px;margin:0;vertical-align:initial}
 /* Full-width third results panel; distinct from cyan SELL and gold REPROCESS. */
+.no-buy-panel[hidden]{display:none!important}
 .no-buy-panel{border-color:#b07839;border-top:2px solid #ffb86b}
 .no-buy-panel h2,.no-buy-panel .number{color:#ffb86b}
 .no-buy-heading{display:inline-flex;align-items:center;gap:9px;flex-wrap:wrap}
@@ -170,7 +171,7 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 </details>
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">Better to SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">Better to REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
 
-<div class="panel no-buy-panel" aria-label="Items without sufficient Jita buy orders"><h2><span class="no-buy-heading"><span aria-hidden="true">⚠</span> No Buy Orders Available <span id="nobuycount">(0)</span></span></h2><p class="hint note">Items with no Jita 4-4 buy orders or insufficient volume to sell the full quantity. Reprocessing values, when available, are informational—not a verified recommendation.</p><div id="nobuy" class="result-list">No items</div></div>
+<div id="noBuyPanel" class="panel no-buy-panel" aria-label="Items without sufficient Jita buy orders" hidden><h2><span class="no-buy-heading"><span aria-hidden="true">⚠</span> No Buy Orders Available <span id="nobuycount">(0)</span></span></h2><p class="hint note">Items with no Jita 4-4 buy orders or insufficient volume to sell the full quantity. Reprocessing values, when available, are informational—not a verified recommendation.</p><div id="nobuy" class="result-list">No items</div></div>
 
 <div class="panel breakdown-panel" aria-label="Reprocessing Breakdown">
  <details id="breakdown-details">
