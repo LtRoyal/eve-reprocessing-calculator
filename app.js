@@ -306,3 +306,91 @@ $('export').addEventListener('click',()=>{
  for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',r.meltQty??'',r.remainder??'',q(r.reason||r.buyStatus)].join(','));
  const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });loadData();
+
+
+// Frozen share links contain a compressed, self-contained copy of this calculation.
+// No backend or external link-shortener is used. Anyone with the URL can read the inventory.
+const snapshotPrefix='elb-snapshot-v1=';
+function bytesToBase64url(bytes){
+ let output='';for(let i=0;i<bytes.length;i+=8192)output+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(output).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64urlToBytes(value){
+ const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));
+ return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function encodeSnapshot(data){
+ const bytes=new TextEncoder().encode(JSON.stringify(data));
+ if(typeof CompressionStream!=='undefined'){
+  const stream=new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+  return 'g'+bytesToBase64url(new Uint8Array(await new Response(stream).arrayBuffer()));
+ }
+ return 'p'+bytesToBase64url(bytes);
+}
+async function decodeSnapshot(payload){
+ const bytes=base64urlToBytes(payload.slice(1));let decoded=bytes;
+ if(payload[0]==='g'){
+  if(typeof DecompressionStream==='undefined')throw Error('This browser cannot decompress snapshot links. Try a current browser.');
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  decoded=new Uint8Array(await new Response(stream).arrayBuffer());
+ }else if(payload[0]!=='p')throw Error('Unknown snapshot encoding');
+ return JSON.parse(new TextDecoder().decode(decoded));
+}
+function snapshotMessage(message){const el=$('share-status');el.hidden=false;el.textContent=message;}
+function snapshotNotice(when){
+ let el=$('snapshot-notice');if(!el){el=document.createElement('div');el.id='snapshot-notice';el.className='snapshot-notice';
+ const inventory=$('inventory').closest('.panel');inventory.parentNode.insertBefore(el,inventory);}
+ el.textContent=`FROZEN RESULTS SNAPSHOT · Created ${new Date(when).toLocaleString('en-GB')}. Prices and recommendations are saved from the original calculation; they are not refreshed. Click Calculate to recalculate with current market data.`;
+}
+async function createShareSnapshot(){
+ const button=$('share');if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
+ button.disabled=true;snapshotMessage('Preparing frozen snapshot and material breakdown…');
+ try{
+  // Force the breakdown to load, so the shared link preserves material names and prices too.
+  const details=$('breakdown-details');details.open=true;
+  await showBreakdown();
+  if(breakdownLoaded!==breakdownVersion)throw Error('The material breakdown could not finish loading. Please try again.');
+  const data={v:1,created:new Date().toISOString(),inventory:$('inventory').value,
+   yield:$('yield').value,tax:$('tax').value,results,
+   status:$('status').textContent,breakdownStatus:$('breakdown-status').textContent,
+   breakdownHTML:$('breakdown-body').innerHTML,
+   recipeGenerated:marketInfo.recipeGenerated,
+   marketFetched:marketInfo.lastFetched};
+  const payload=await encodeSnapshot(data);
+  const url=new URL(location.href);url.hash=snapshotPrefix+payload;
+  if(url.href.length>16000){snapshotMessage(`Snapshot is ${url.href.length.toLocaleString()} characters long and may exceed some chat apps' link limits. Try a smaller inventory or share the link as a text file.`)}
+  else snapshotMessage('Frozen snapshot link copied. Anyone with the link can view this inventory and its saved results.');
+  try{await navigator.clipboard.writeText(url.href)}catch(e){
+   snapshotMessage('Clipboard unavailable. Copy the link from the field below.');
+   let input=$('snapshot-link');if(!input){input=document.createElement('textarea');input.id='snapshot-link';input.readOnly=true;input.style.height='85px';$('share-status').insertAdjacentElement('afterend',input)}
+   input.value=url.href;input.focus();input.select();
+  }
+ }catch(e){snapshotMessage('Unable to create snapshot: '+e.message)}finally{button.disabled=false}
+}
+async function restoreShareSnapshot(){
+ const fragment=location.hash.slice(1);if(!fragment.startsWith(snapshotPrefix))return;
+ try{
+  const data=await decodeSnapshot(fragment.slice(snapshotPrefix.length));
+  if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
+  $('inventory').value=data.inventory;$('yield').value=data.yield;$('tax').value=data.tax;
+  results=data.results;render();$('status').textContent=data.status||'Frozen calculation restored.';
+  breakdownVersion++;breakdownLoaded=breakdownVersion;
+  // The HTML originates from our own generated table; sanitize by reconstructing text-only table nodes.
+  const source=new DOMParser().parseFromString(data.breakdownHTML||'','text/html');
+  const target=$('breakdown-body');target.replaceChildren();
+  const table=source.querySelector('table');
+  if(table){const clean=document.createElement('table');clean.className='breakdown-table';
+   for(const row of table.querySelectorAll('tr')){const tr=document.createElement('tr');
+    for(const cell of row.children){if(!['TD','TH'].includes(cell.tagName))continue;
+     const td=document.createElement(cell.tagName.toLowerCase());td.textContent=cell.textContent;tr.append(td)}
+    clean.append(tr)}target.append(clean)}
+  for(const node of source.body.children){if(node.matches('.breakdown-total,.hint.note')){
+   const div=document.createElement(node.tagName.toLowerCase());div.className=node.className;div.textContent=node.textContent;target.append(div)}}
+  $('breakdown-status').textContent=data.breakdownStatus||'Saved breakdown';
+  $('breakdown-details').open=false;
+  snapshotNotice(data.created);
+  snapshotMessage('Viewing a frozen snapshot. The figures will not change until you click Calculate.');
+ }catch(e){snapshotMessage('This snapshot link could not be opened: '+e.message)}
+}
+$('share').addEventListener('click',createShareSnapshot);
+restoreShareSnapshot();
