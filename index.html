@@ -176,6 +176,24 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .grid>.panel:first-child .result-panel-header h2{color:var(--jita-cyan)}
 .grid>.panel:last-child .result-panel-header h2{color:var(--isk-gold)}
 @media(max-width:600px){.result-panel-header{align-items:flex-start}.result-panel-header button{max-width:100%}}
+
+/* Bug reporting lives at the bottom of the page. */
+.bug-footer{margin:20px 0 8px;text-align:center;border-color:#35465f}
+.bug-footer p{margin:0 0 12px}
+#bug-open{background:#283e5a;border:1px solid #7085a1}
+#bug-open:hover{background:#355477}
+.bug-dialog{max-width:min(640px,calc(100vw - 28px));width:100%;box-sizing:border-box;max-height:90vh;overflow:auto;background:#182336;color:#e9eff9;border:2px solid #287f96;border-radius:12px;padding:20px;box-shadow:0 18px 65px #000b}
+.bug-dialog::backdrop{background:#050c17c9}
+.bug-dialog h2{margin:0 0 8px}
+.bug-dialog label{display:block;margin:12px 0 5px;font-weight:600}
+.bug-dialog textarea{height:110px;font-family:system-ui,Arial,sans-serif}
+.bug-dialog input[type=file]{font-size:.9rem}
+.bug-dialog .bug-check{display:flex;align-items:center;gap:8px;font-weight:400}
+.bug-dialog .bug-check input{width:auto}
+.bug-dialog .bug-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#bug-preview{display:block;max-width:100%;max-height:220px;object-fit:contain;margin-top:8px;border:1px solid #546680;border-radius:6px}
+#bug-preview[hidden],#bug-status[hidden]{display:none}
+#bug-status{white-space:pre-wrap;overflow-wrap:anywhere}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -241,4 +259,27 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   update();
 })();
 </script>
-<script src="app.js?v=62" defer></script></body></html>
+
+<footer class="panel bug-footer" aria-label="Feedback">
+ <p class="hint note">Found a problem with Every Little Bit?</p>
+ <button id="bug-open" type="button">🐛 Report Bug</button>
+</footer>
+<dialog id="bug-dialog" class="bug-dialog" aria-labelledby="bug-title">
+ <form id="bug-form">
+  <h2 id="bug-title">Report a Bug</h2>
+  <p class="hint note">Tell us what happened. Your report goes to the Every Little Bit team's private Discord channel.</p>
+  <label for="bug-description">What went wrong?</label>
+  <textarea id="bug-description" maxlength="2000" minlength="10" required placeholder="What were you doing, what happened, and what did you expect?"></textarea>
+  <label class="bug-check" for="bug-screenshot"><input type="checkbox" id="bug-screenshot" checked> Include a screenshot of this page</label>
+  <p class="hint note">Screenshots may contain your pasted inventory, results and snapshot link. You can review the image and remove it before submitting.</p>
+  <button id="bug-capture" type="button">Capture / refresh screenshot</button>
+  <label for="bug-upload">Or attach your own screenshot (optional)</label>
+  <input id="bug-upload" type="file" accept="image/png,image/jpeg,image/webp">
+  <img id="bug-preview" alt="Screenshot preview to be sent with your report" hidden>
+  <p id="bug-capture-status" class="hint note" role="status"></p>
+  <label class="bug-check" for="bug-consent"><input type="checkbox" id="bug-consent" required> I have reviewed the report and any screenshot and agree to send them.</label>
+  <p id="bug-status" class="hint note" role="status" hidden></p>
+  <div class="bug-actions"><button type="submit" id="bug-send">Send Bug Report</button><button type="button" id="bug-close">Cancel</button></div>
+ </form>
+</dialog>
+<script src="app.js?v=63" defer></script></body></html>

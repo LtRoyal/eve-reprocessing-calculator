@@ -435,3 +435,77 @@ async function restoreShareSnapshot(){
 restoreShareSnapshot();
 
 
+
+
+// Optional screenshot-based bug reports. The Cloudflare /bugs endpoint must be deployed separately.
+(function initBugReporter(){
+ const open=$('bug-open'),dialog=$('bug-dialog'),form=$('bug-form');
+ if(!open||!dialog||!form)return;
+ const preview=$('bug-preview'),captureStatus=$('bug-capture-status'),status=$('bug-status');
+ let screenshot=null,previewUrl=null,capturing=false;
+ function setPreview(file){
+  screenshot=file;
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+  previewUrl=file?URL.createObjectURL(file):null;
+  if(file){preview.src=previewUrl;preview.hidden=false;}else{preview.removeAttribute('src');preview.hidden=true;}
+ }
+ function message(text){status.hidden=false;status.textContent=text;}
+ function loadCaptureLibrary(){
+  if(window.html2canvas)return Promise.resolve(window.html2canvas);
+  return new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   script.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+   script.onload=()=>window.html2canvas?resolve(window.html2canvas):reject(Error('Screenshot library unavailable'));
+   script.onerror=()=>reject(Error('Screenshot library could not load'));
+   document.head.append(script);
+  });
+ }
+ async function capturePage(){
+  if(capturing)return;
+  capturing=true;$('bug-capture').disabled=true;
+  captureStatus.textContent='Capturing page…';
+  try{
+   const html2canvas=await loadCaptureLibrary();
+   // Temporarily hide the modal to capture the actual page rather than the report form.
+   dialog.close();
+   try{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const canvas=await html2canvas(document.body,{backgroundColor:'#0d1421',useCORS:true,scale:Math.min(1.25,window.devicePixelRatio||1),windowWidth:document.documentElement.scrollWidth,windowHeight:document.documentElement.scrollHeight,scrollY:0,logging:false});
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.78));
+    if(!blob)throw Error('Could not encode screenshot');
+    if(blob.size>3_000_000)throw Error('Screenshot is over 3 MB; please attach a smaller image instead');
+    setPreview(new File([blob],'every-little-bit-bug.jpg',{type:'image/jpeg'}));
+    $('bug-screenshot').checked=true;
+    captureStatus.textContent='Screenshot ready. Review the preview before sending.';
+   }finally{dialog.showModal();}
+  }catch(e){captureStatus.textContent='Automatic screenshot unavailable: '+e.message+'. You can attach one manually or send without a screenshot.';}
+  finally{capturing=false;$('bug-capture').disabled=false;}
+ }
+ open.addEventListener('click',()=>{status.hidden=true;dialog.showModal();if($('bug-screenshot').checked&&!screenshot)capturePage();});
+ $('bug-close').addEventListener('click',()=>dialog.close());
+ $('bug-capture').addEventListener('click',capturePage);
+ $('bug-screenshot').addEventListener('change',e=>{if(e.target.checked&&!screenshot)capturePage();});
+ $('bug-upload').addEventListener('change',()=>{
+  const file=$('bug-upload').files[0];if(!file)return;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>3_000_000){captureStatus.textContent='Please choose a PNG, JPEG or WebP image under 3 MB.';return;}
+  setPreview(file);$('bug-screenshot').checked=true;captureStatus.textContent='Attached screenshot ready for review.';
+ });
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const description=$('bug-description').value.trim();
+  if(description.length<10){message('Please describe the problem in at least 10 characters.');return;}
+  if(!$('bug-consent').checked){message('Please confirm you have reviewed what will be sent.');return;}
+  const button=$('bug-send');button.disabled=true;message('Sending bug report…');
+  try{
+   const data=new FormData();data.set('description',description);
+   data.set('page',location.origin+location.pathname+location.search);
+   data.set('browser',navigator.userAgent.slice(0,350));
+   if($('bug-screenshot').checked&&screenshot)data.set('screenshot',screenshot,screenshot.name);
+   const response=await fetch(SNAPSHOT_API+'/bugs',{method:'POST',body:data});
+   if(!response.ok){let detail='HTTP '+response.status;try{const j=await response.json();if(j.error)detail=j.error;}catch(e){}throw Error(detail);}
+   message('Bug report sent. Thank you! o7');
+   form.reset();setPreview(null);captureStatus.textContent='';
+  }catch(e){message('Could not send the report: '+e.message+'. Please try again later.');}
+  finally{button.disabled=false;}
+ });
+})();
