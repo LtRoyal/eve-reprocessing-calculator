@@ -269,6 +269,7 @@ async function showBreakdown(){
  }
  if(version!==breakdownVersion||!$('breakdown-details').open)return;
  entries.sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
+ if(version!==breakdownVersion||!$('breakdown-details').open)return;
  const table=document.createElement('table');table.className='breakdown-table';
  const head=document.createElement('thead'),header=document.createElement('tr');
  for(const title of ['Material','Quantity','Jita buy value']){const th=document.createElement('th');th.textContent=title;header.append(th)}
@@ -282,15 +283,15 @@ async function showBreakdown(){
   if(entry.reason){tr.title=entry.reason;tr.className='breakdown-unavailable'}
   tbody.append(tr);
  }
- table.append(tbody);body.append(table);
+ table.append(tbody);
  const missing=entries.filter(x=>x.value===null).length;
  const sum=entries.reduce((total,x)=>total+(x.value||0),0);
  const total=document.createElement('div');total.className='breakdown-total';
  total.textContent=(missing?'Verified partial material value: ':'Total material buy-order value: ')+isk(sum);
- body.append(total);
+
  const note=document.createElement('p');note.className='hint note';
  note.textContent='Combined quantities are valued against Jita 4-4 buy-order depth. This informational total can differ from the Summary, which values items individually. Leftover unreprocessed units are excluded.';
- body.append(note);
+ body.replaceChildren(table,total,note);
  status.textContent=missing?`${entries.length} material types · ${missing} unavailable; total is partial.`:`${entries.length} material types · all combined quantities valued.`;
  breakdownLoaded=version;
 }
@@ -327,7 +328,7 @@ async function decodeSnapshot(payload){
 async function snapshotResponseError(response){
  let message=`HTTP ${response.status}`;
  try{const data=await response.json();if(data.error)message=data.error;}catch(e){}
- if(response.status===413)message+=' — this inventory exceeds the snapshot storage limit (100 KB).';
+ if(response.status===413)message+=' — this inventory exceeds the snapshot storage limit configured in Cloudflare.';
  return new Error(message);
 }
 function snapshotMessage(message){const el=$('share-status');el.hidden=false;el.textContent=message;}
@@ -380,7 +381,10 @@ function applyShareSnapshot(data){
     for(const cell of row.children){if(!['TD','TH'].includes(cell.tagName))continue;
      const td=document.createElement(cell.tagName.toLowerCase());td.textContent=cell.textContent;tr.append(td)}
     clean.append(tr)}target.append(clean)}
+  const restoredExtras=new Set();
   for(const node of source.body.children){if(node.matches('.breakdown-total,.hint.note')){
+   const kind=node.matches('.breakdown-total')?'total':'note';
+   if(restoredExtras.has(kind))continue;restoredExtras.add(kind);
    const div=document.createElement(node.tagName.toLowerCase());div.className=node.className;div.textContent=node.textContent;target.append(div)}}
   $('breakdown-status').textContent=data.breakdownStatus||'Saved breakdown';
   $('breakdown-details').open=false;
