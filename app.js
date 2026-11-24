@@ -424,15 +424,4 @@ async function restoreShareSnapshot(){
 $('share').addEventListener('click',createShareSnapshot);
 restoreShareSnapshot();
 
-// Copy the original inventory from either a live calculation or a frozen snapshot.
-$('copyinventory').addEventListener('click',async()=>{
- const inventory=$('inventory').value;
- if(!inventory.trim()){snapshotMessage('No inventory to copy yet. Paste an inventory or open a frozen snapshot first.');return;}
- try{
-  await navigator.clipboard.writeText(inventory);
-  snapshotMessage('Inventory copied! Paste it into Every Little Bit to run a new calculation.');
- }catch(e){
-  snapshotMessage('Clipboard access was blocked. Select and copy the inventory from the text box above.');
-  $('inventory').focus();$('inventory').select();
- }
-});
+
