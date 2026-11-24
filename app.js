@@ -90,6 +90,7 @@ function makeRow(item){
  const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';
  name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
  left.append(name);if(item.ammo&&item.action==='REPROCESS'){const detail=document.createElement('div');detail.className='hint note';detail.textContent=`Reprocess ${item.meltQty.toLocaleString('en-GB')} · Remaining ${item.remainder.toLocaleString('en-GB')} (sell)`;left.append(detail)}const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
+ if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='Sell only · No reprocessing recipe in current EVE data';wrap.append(note)}
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
  if(item.action==='REPROCESS'){
   const note=document.createElement('div');note.className='hint note';
@@ -113,7 +114,8 @@ function render(){
  const sellTotal=valued.filter(x=>x.action==='SELL').reduce((s,x)=>s+x.best,0)+leftoverTotal;
  const meltTotal=valued.filter(x=>x.action==='REPROCESS').reduce((s,x)=>s+x.meltValue,0);
  const meltVerified=results.filter(x=>x.meltValue!=null && x.meltValuationComplete===true);
- const meltMissing=results.filter(x=>x.meltValue==null || x.meltValuationComplete!==true);
+ const sellOnlyCount=results.filter(x=>x.sellOnly).length;
+ const meltMissing=results.filter(x=>!x.sellOnly && (x.meltValue==null || x.meltValuationComplete!==true));
  const allMeltKnown=results.length>0 && meltMissing.length===0;
  const allMeltTotal=meltVerified.reduce((s,x)=>s+x.meltValue,0);
  const reviewCount=results.length-valued.length;
@@ -121,7 +123,7 @@ function render(){
  const cards=[
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},
   {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'},
-  {label:allMeltKnown?'Total ISK if everything was melted':'Verified partial all-melt ISK',value:meltVerified.length?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
+  {label:allMeltKnown?(sellOnlyCount?'Total ISK if all meltable items were melted':'Total ISK if everything was melted'):'Verified partial all-melt ISK',value:meltVerified.length?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
   {label:'Total potential ISK',value:isk(total)},
   {label:'ISK made with calculator',value:isk(extra),kind:'gain'}
  ];
@@ -136,7 +138,7 @@ function render(){
  }
  summary.append(grid);
  const meltNote=document.createElement('p');meltNote.className='hint note';
- meltNote.textContent=allMeltKnown?'All-melt total includes all verified recoverable materials, regardless of its SELL/REPROCESS recommendation. Items below their SDE minimum reprocessing batch contribute zero; leftover rounds are excluded.':`Full all-melt total unavailable: ${meltMissing.length} of ${results.length} item(s) lack verified melt values. ${meltVerified.length?'The figure above is a verified partial total, NOT the value of melting everything.':'No verified melting values are available.'} Missing: ${meltMissing.slice(0,8).map(x=>x.name).join(', ')}${meltMissing.length>8?', …':''}. Leftover units are excluded.`;
+ meltNote.textContent=allMeltKnown?`All-melt total includes verified recoverable materials. ${sellOnlyCount?sellOnlyCount+' item(s) have no recipe in the current data and are treated as sell-only; their sell value is excluded from the all-melt total. ':''}Items below their minimum reprocessing batch contribute zero; leftovers are excluded.`:`Full all-melt total unavailable: ${meltMissing.length} of ${results.length} item(s) lack verified melt values. ${meltVerified.length?'The figure above is a verified partial total, NOT the value of melting everything.':'No verified melting values are available.'} Missing: ${meltMissing.slice(0,8).map(x=>x.name).join(', ')}${meltMissing.length>8?', …':''}. Leftover units are excluded.`;
  summary.append(meltNote);
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
@@ -156,7 +158,7 @@ async function calculate(){
       const typeId=await resolveTypeId(item.name);
       const sell=await price(typeId,item.qty);
       const reason='No verified reprocessing recipe available; melt comparison cannot be calculated.';
-      if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,meltValue:null,meltValuationComplete:false,reason});
+      if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,sellOnly:true,meltValue:null,meltValuationComplete:false});
       else results.push({...item,action:'REVIEW',sell:null,meltValue:null,meltValuationComplete:false,reason:reason+' Insufficient Jita 4-4 buy orders to sell the full quantity.'});
      }catch(e){results.push({...item,action:'REVIEW',meltValue:null,meltValuationComplete:false,reason:'Missing recipe; item/market lookup failed: '+e.message})}
      render();continue;
