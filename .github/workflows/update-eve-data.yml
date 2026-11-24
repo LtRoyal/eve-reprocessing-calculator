@@ -8,7 +8,7 @@ on:
       - 'build_data.py'
       - '.github/workflows/update-eve-data.yml'
   schedule:
-    - cron: '30 5 * * 1'
+    - cron: '30 11 * * *'
 
 permissions:
   contents: write
