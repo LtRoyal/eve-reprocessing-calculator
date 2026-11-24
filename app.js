@@ -174,7 +174,7 @@ function render(){
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;clearSnapshotAddress();results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
@@ -229,6 +229,7 @@ async function calculate(){
    render();
   }
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
+  await createShareSnapshot({automatic:true});
  }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
 }
 
@@ -351,12 +352,20 @@ function snapshotNotice(when){
  const inventory=$('inventory').closest('.panel');inventory.parentNode.insertBefore(el,inventory);}
  el.textContent=`FROZEN RESULTS SNAPSHOT · Created ${new Date(when).toLocaleString('en-GB')}. Prices and recommendations are saved from the original calculation; they are not refreshed. Click Calculate to recalculate with current market data.`;
 }
-async function createShareSnapshot(){
+function clearSnapshotAddress(){
+ const url=new URL(location.href);
+ if(url.searchParams.has('s')||url.hash.startsWith('#'+snapshotPrefix)){
+  url.searchParams.delete('s');if(url.hash.startsWith('#'+snapshotPrefix))url.hash='';
+  history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+ }
+ const input=$('snapshot-link');if(input){input.value='';input.hidden=true}
+}
+async function createShareSnapshot({automatic=false}={}){
  const button=$('share');if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
- button.disabled=true;snapshotMessage('Saving frozen snapshot to Cloudflare…');
+ button.disabled=true;snapshotMessage(automatic?'Calculation finished. Creating shareable address…':'Saving frozen snapshot to Cloudflare…');
  try{
-  const details=$('breakdown-details');details.open=true;
-  await showBreakdown();
+  const details=$('breakdown-details');const wasOpen=details.open;details.open=true;
+  try{await showBreakdown()}finally{if(automatic)details.open=wasOpen}
   if(breakdownLoaded!==breakdownVersion)throw Error('The material breakdown could not finish loading. Please try again.');
   const data={v:1,created:new Date().toISOString(),inventory:$('inventory').value,
    yield:$('yield').value,tax:$('tax').value,results,
@@ -371,15 +380,17 @@ async function createShareSnapshot(){
   if(!/^[a-f0-9]{24}$/.test(saved.id||''))throw Error('Snapshot service returned an invalid ID.');
   const url=new URL(location.pathname,location.origin);url.searchParams.set('s',saved.id);
   const link=url.href;
+  history.replaceState(history.state,'',url.pathname+url.search);
   let input=$('snapshot-link');
   if(!input){input=document.createElement('input');input.id='snapshot-link';input.readOnly=true;
    input.setAttribute('aria-label','Shareable snapshot link');
    $('share-status').insertAdjacentElement('afterend',input)}
   input.value=link;input.hidden=false;
-  try{await navigator.clipboard.writeText(link);
+  if(automatic){snapshotMessage('Shareable snapshot link added to the address bar! Copy the browser address to share these frozen results. Expires in 30 days.')}
+  else try{await navigator.clipboard.writeText(link);
    snapshotMessage('Short frozen snapshot link copied! It expires in 30 days. Anyone with the link can see the inventory and saved results.');
   }catch(e){snapshotMessage('Snapshot saved! Copy the short link from the field below.');input.focus();input.select();}
- }catch(e){snapshotMessage('Unable to save snapshot: '+e.message)}finally{button.disabled=false}
+ }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}finally{button.disabled=false}
 }
 function applyShareSnapshot(data){
  if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
