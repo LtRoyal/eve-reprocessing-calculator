@@ -361,8 +361,8 @@ function clearSnapshotAddress(){
  const input=$('snapshot-link');if(input){input.value='';input.hidden=true}
 }
 async function createShareSnapshot({automatic=false}={}){
- const button=$('share');if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
- button.disabled=true;snapshotMessage(automatic?'Calculation finished. Creating shareable address…':'Saving frozen snapshot to Cloudflare…');
+ if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
+ snapshotMessage(automatic?'Calculation finished. Creating shareable address…':'Saving frozen snapshot to Cloudflare…');
  try{
   const details=$('breakdown-details');const wasOpen=details.open;details.open=true;
   try{await showBreakdown()}finally{if(automatic)details.open=wasOpen}
@@ -390,7 +390,7 @@ async function createShareSnapshot({automatic=false}={}){
   else try{await navigator.clipboard.writeText(link);
    snapshotMessage('Short frozen snapshot link copied! It expires in 30 days. Anyone with the link can see the inventory and saved results.');
   }catch(e){snapshotMessage('Snapshot saved! Copy the short link from the field below.');input.focus();input.select();}
- }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}finally{button.disabled=false}
+ }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}
 }
 function applyShareSnapshot(data){
  if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
@@ -432,7 +432,6 @@ async function restoreShareSnapshot(){
   applyShareSnapshot(data);
  }catch(e){snapshotMessage('This snapshot link could not be opened: '+e.message)}
 }
-$('share').addEventListener('click',createShareSnapshot);
 restoreShareSnapshot();
 
 
