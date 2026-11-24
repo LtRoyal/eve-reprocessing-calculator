@@ -25,8 +25,13 @@ function parseInventory(text){
   if(!line.trim())return;
   const parts=line.split('\t').map(s=>s.trim());let name='',qty=1;
   if(parts.length>=2){
-   if(/^\d[\d,]*$/.test(parts[1])){name=parts[0];qty=Number(parts[1].replaceAll(',',''))}
-   else if(/^\d[\d,]*$/.test(parts[0])){name=parts[1];qty=Number(parts[0].replaceAll(',',''))}
+   // Clipboard exports may contain a name followed by empty tab columns.
+   // A missing quantity means one item, not an invalid inventory line.
+   const nonempty=parts.filter(Boolean);
+   const numeric=value=>/^\d[\d,]*$/.test(value);
+   if(nonempty.length===1){name=nonempty[0]}
+   else if(numeric(nonempty[1])){name=nonempty[0];qty=Number(nonempty[1].replaceAll(',',''))}
+   else if(numeric(nonempty[0])){name=nonempty[1];qty=Number(nonempty[0].replaceAll(',',''))}
    else{bad.push(i+1);return}
   }else{
    const m=line.trim().match(/^(.*?)\s{2,}(\d[\d,]*)(?:\s{2,}.*)?$/);
