@@ -150,14 +150,18 @@ function render(){
   {label:'ISK made from melting',value:isk(meltTotal),icon:'reprocess-icon.png'},
   {label:allMeltKnown?(sellOnlyCount?'Total ISK if all meltable items were melted':'Total ISK if everything was melted'):'Verified partial all-melt ISK',value:meltVerified.length?isk(allMeltTotal):'Unavailable',icon:'reprocess-icon.png'},
   {label:'Total potential ISK if everything was sold',value:isk(total),icon:'sell-icon.png'},
-  {label:'ISK made with calculator',value:isk(extra),kind:'gain'}
+  {label:'Extra ISK made using Every Little Bit',value:isk(extra),kind:'gain'}
  ];
  const grid=document.createElement('div');grid.className='summary-grid';
  for(const {label,value,kind,icon} of cards){
   const card=document.createElement('div');card.className='summary-card';
   const title=document.createElement('div');title.className='summary-label'+(icon?' with-icon':'');
   if(icon){const img=document.createElement('img');img.src=icon;img.alt='';img.setAttribute('aria-hidden','true');title.append(img)}
-  const titleText=document.createElement('span');titleText.textContent=label;title.append(titleText);
+  const headingText=kind==='gain'?'BONUS':label==='ISK made from selling (incl. leftovers)'?'Better to SELL':label==='ISK made from melting'?'Better to REPROCESS':null;
+  if(headingText){
+   const heading=document.createElement('span');heading.className='summary-card-heading '+(kind==='gain'?'bonus-heading':label.includes('selling')?'sell-heading':'reprocess-heading');heading.textContent=headingText;title.append(heading);
+   const subtitle=document.createElement('span');subtitle.className='summary-card-subtitle';subtitle.textContent=label;title.append(subtitle);
+  }else{const titleText=document.createElement('span');titleText.textContent=label;title.append(titleText);}
   const amount=document.createElement('div');amount.className='summary-value'+(kind?' '+kind:'');amount.textContent=value;
   card.append(title,amount);grid.append(card);
  }

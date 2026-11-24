@@ -153,6 +153,16 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .search-chevron{display:block;width:10px;height:10px;box-sizing:border-box;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease;color:#a7b6cc;flex:none;margin:0 5px}
 #search-details[open] .search-chevron{transform:rotate(225deg)}
 .search-content{padding-top:15px}
+/* Recommendation cards: action first, explanation second, ISK total third. */
+#summary .summary-card.sell-return .summary-label,
+#summary .summary-card.melt-return .summary-label,
+#summary .summary-card.gain-return .summary-label{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;min-height:0}
+#summary .summary-card-heading{display:block;font-family:"Shentox Site",system-ui,Arial,sans-serif;font-weight:600;font-size:1.16rem;line-height:1.25}
+#summary .sell-heading{color:var(--jita-cyan)}
+#summary .reprocess-heading{color:var(--isk-gold)}
+#summary .bonus-heading{color:#a1e6b3;font-size:1.3rem}
+#summary .summary-card-subtitle{display:block;font-size:.78rem;color:#a7b6cc;line-height:1.4}
+#summary .summary-card.gain-return .summary-card-subtitle{color:#b9dccc}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -218,4 +228,4 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   update();
 })();
 </script>
-<script src="app.js?v=57" defer></script></body></html>
+<script src="app.js?v=58" defer></script></body></html>
