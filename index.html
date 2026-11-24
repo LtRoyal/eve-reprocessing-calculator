@@ -126,6 +126,23 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #summary .summary-grid > .summary-heading.alternatives{order:4}
 #summary .summary-grid > .summary-card.all-sold{order:5}
 #summary .summary-grid > .summary-card.all-melt{order:6}
+
+/* Expandable, full-width recovered-materials breakdown. */
+.breakdown-panel{border:2px solid var(--isk-border)}
+.breakdown-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;color:var(--isk-gold);font-family:"Shentox Site",system-ui,Arial,sans-serif;font-size:1.25rem;font-weight:600;padding:3px 0}
+.breakdown-toggle::-webkit-details-marker{display:none}
+.breakdown-toggle:focus-visible{outline:2px solid var(--jita-cyan);outline-offset:5px}
+.breakdown-chevron{font-size:1.6rem;line-height:1;transition:transform .15s ease}
+#breakdown-details[open] .breakdown-chevron{transform:rotate(180deg)}
+.breakdown-scroll{overflow-x:auto}
+.breakdown-table{width:100%;border-collapse:collapse;margin-top:10px;font-variant-numeric:tabular-nums}
+.breakdown-table th,.breakdown-table td{padding:11px 9px;border-bottom:1px solid #35465f;text-align:right}
+.breakdown-table th:first-child,.breakdown-table td:first-child{text-align:left}
+.breakdown-table th{color:#c7d5e7;font-weight:600}
+.breakdown-table td:last-child{color:var(--isk-gold)}
+.breakdown-unavailable td:last-child{color:#ffb4a9}
+.breakdown-total{text-align:right;font-family:"Shentox Site",system-ui,Arial,sans-serif;color:var(--isk-gold);font-size:1.18rem;padding:14px 9px 4px}
+@media(max-width:520px){.breakdown-table th,.breakdown-table td{padding:9px 5px;font-size:.82rem}}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -142,6 +159,14 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 <div class="grid"><div class="panel"><h2><img class="section-icon" src="sell-icon.png" alt="" aria-hidden="true">Better to SELL <span id="sellcount">(0)</span></h2><div id="sell" class="result-list">No items yet</div></div><div class="panel"><h2><img class="section-icon" src="reprocess-icon.png" alt="" aria-hidden="true">Better to REPROCESS <span id="repcount">(0)</span></h2><div id="rep" class="result-list">No items yet</div></div></div>
 
 <div class="panel no-buy-panel" aria-label="Items without sufficient Jita buy orders"><h2><span class="no-buy-heading"><span aria-hidden="true">⚠</span> No Buy Orders Available <span id="nobuycount">(0)</span></span></h2><p class="hint note">Items with no Jita 4-4 buy orders or insufficient volume to sell the full quantity. Reprocessing values, when available, are informational—not a verified recommendation.</p><div id="nobuy" class="result-list">No items</div></div>
+
+<div class="panel breakdown-panel" aria-label="Reprocessing Breakdown">
+ <details id="breakdown-details">
+  <summary class="breakdown-toggle"><span>▤ &nbsp;Reprocessing Breakdown</span><span class="breakdown-chevron" aria-hidden="true">⌄</span></summary>
+  <p id="breakdown-status" class="hint note" role="status">Expand to view the combined materials from recommended REPROCESS items.</p>
+  <div id="breakdown-body" class="breakdown-scroll"></div>
+ </details>
+</div>
 <div class="panel"><h2>Summary</h2><div id="summary">No verified results yet.</div><p class="hint">Click an item name to copy it. Results are sorted A–Z. Only Jita 4-4 station buy orders count. No invented prices. Market data is cached by CCP; fees and hauling are excluded. Items without reliable valuations will be flagged in the calculation status. Reprocessing-only values are not counted as verified gains versus selling.</p></div>
 
 <script>
@@ -180,4 +205,4 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   update();
 })();
 </script>
-<script src="app.js?v=46" defer></script></body></html>
+<script src="app.js?v=47" defer></script></body></html>

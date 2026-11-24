@@ -4,6 +4,8 @@ const isk=n=>Number(n).toLocaleString('en-GB',{maximumFractionDigits:0})+' ISK';
 const sort=(a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'});
 let dataset=null,results=[];
 const ordersCache=new Map(),ammoCache=new Map();
+let breakdownVersion=0,breakdownLoaded=-1;
+const materialNameCache=new Map();
 // ESI Date/HTTP Age describe the response, not a guaranteed market-price snapshot.
 const marketInfo={lastFetched:null,esiDate:null,ageSeconds:null,requests:0,reused:0,recipeGenerated:null};
 function marketTime(date){if(!date)return 'Not yet retrieved';const d=new Date(date);if(Number.isNaN(d.getTime()))return 'Unknown';return d.toLocaleString('en-GB',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'});}
@@ -167,7 +169,7 @@ function render(){
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
@@ -195,6 +197,7 @@ async function calculate(){
     const sell=await price(def.id,item.qty);
     const leftoverValue=remainder?await price(def.id,remainder):0;
     let meltValue=0,failure=null;
+    const recoveredMaterials=[];
     if(meltQty===0){
      if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than ${portion} units required for a reprocessing batch; remaining ${remainder} must be sold.`});
      else results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,action:'NO_BUY',buyStatus:await buyOrderStatus(def.id,item.qty)});
@@ -203,6 +206,7 @@ async function calculate(){
     for(const[materialId,amount]of def.materials){
      if(!Number.isSafeInteger(amount)||amount<=0){failure='Invalid material quantity';break}
      const units=Math.floor(amount*(meltQty/portion)*y*(1-t));if(units===0)continue;
+     recoveredMaterials.push({id:materialId,qty:units});
      const materialValue=await price(materialId,units);
      if(materialValue===null){failure=`Insufficient Jita buy orders for material type ${materialId}`;break}
      meltValue+=materialValue;
@@ -210,7 +214,7 @@ async function calculate(){
     const meltValuationComplete=failure===null;
     if(remainder&&leftoverValue===null)failure=failure||'Insufficient Jita buy orders for remaining units';
     const rep=failure?null:meltValue+leftoverValue;
-    const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete};
+    const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete,recoveredMaterials};
     if(failure){
      if(sell!==null)results.push({...item,...details,sell,best:sell,action:'SELL',reason:`Reprocessing comparison unavailable: ${failure}`});
      else results.push({...item,...details,action:'NO_BUY',sell:null,buyStatus:await buyOrderStatus(def.id,item.qty),reason:`Reprocessing valuation incomplete: ${failure}`});
@@ -222,6 +226,73 @@ async function calculate(){
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
  }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
 }
+
+// The expandable material table is informational and never changes recommendations.
+function resetBreakdown(){
+ const body=$('breakdown-body');if(body)body.replaceChildren();
+ const status=$('breakdown-status');if(status)status.textContent='Expand to view the combined materials from recommended REPROCESS items.';
+}
+async function materialName(typeId){
+ if(materialNameCache.has(typeId))return materialNameCache.get(typeId);
+ const job=(async()=>{
+  const response=await fetch(`https://esi.evetech.net/latest/universe/types/${typeId}/`);
+  if(!response.ok)throw Error(`ESI name lookup ${response.status}`);
+  const data=await response.json();return data.name||`Material type ${typeId}`;
+ })();materialNameCache.set(typeId,job);
+ try{return await job}catch(e){materialNameCache.delete(typeId);return `Material type ${typeId}`}
+}
+async function showBreakdown(){
+ const version=breakdownVersion;
+ if(breakdownLoaded===version)return;
+ const body=$('breakdown-body'),status=$('breakdown-status');
+ body.replaceChildren();status.textContent='Loading recovered materials and Jita buy-order values…';
+ const materials=new Map();
+ for(const item of results.filter(x=>x.action==='REPROCESS')){
+  for(const m of item.recoveredMaterials||[]){materials.set(m.id,(materials.get(m.id)||0)+m.qty)}
+ }
+ if(!materials.size){status.textContent='No items are currently recommended for REPROCESS.';breakdownLoaded=version;return}
+ const entries=[];
+ for(const [id,qty] of materials){
+  try{
+   const [name,value]=await Promise.all([materialName(id),price(id,qty)]);
+   if(version!==breakdownVersion||!$('breakdown-details').open)return;
+   entries.push({name,qty,value,reason:value===null?'Insufficient Jita 4-4 buy-order volume':null});
+  }catch(e){
+   if(version!==breakdownVersion||!$('breakdown-details').open)return;
+   entries.push({name:await materialName(id),qty,value:null,reason:'Market lookup failed: '+e.message});
+  }
+ }
+ if(version!==breakdownVersion||!$('breakdown-details').open)return;
+ entries.sort((a,b)=>a.name.localeCompare(b.name,'en',{sensitivity:'base'}));
+ const table=document.createElement('table');table.className='breakdown-table';
+ const head=document.createElement('thead'),header=document.createElement('tr');
+ for(const title of ['Material','Quantity','Jita buy value']){const th=document.createElement('th');th.textContent=title;header.append(th)}
+ head.append(header);table.append(head);
+ const tbody=document.createElement('tbody');
+ for(const entry of entries){
+  const tr=document.createElement('tr');
+  for(const value of [entry.name,entry.qty.toLocaleString('en-GB'),entry.value===null?'Unavailable':isk(entry.value)]){
+   const td=document.createElement('td');td.textContent=value;tr.append(td)
+  }
+  if(entry.reason){tr.title=entry.reason;tr.className='breakdown-unavailable'}
+  tbody.append(tr);
+ }
+ table.append(tbody);body.append(table);
+ const missing=entries.filter(x=>x.value===null).length;
+ const sum=entries.reduce((total,x)=>total+(x.value||0),0);
+ const total=document.createElement('div');total.className='breakdown-total';
+ total.textContent=(missing?'Verified partial material value: ':'Total material buy-order value: ')+isk(sum);
+ body.append(total);
+ const note=document.createElement('p');note.className='hint note';
+ note.textContent='Combined quantities are valued against Jita 4-4 buy-order depth. This informational total can differ from the Summary, which values items individually. Leftover unreprocessed units are excluded.';
+ body.append(note);
+ status.textContent=missing?`${entries.length} material types · ${missing} unavailable; total is partial.`:`${entries.length} material types · all combined quantities valued.`;
+ breakdownLoaded=version;
+}
+$('breakdown-details').addEventListener('toggle',()=>{
+ if($('breakdown-details').open)showBreakdown();
+});
+
 function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${action==='REPROCESS'?(x.meltQty??x.qty):x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
 $('go').addEventListener('click',calculate);$('search').addEventListener('input',render);
 $('copysell').addEventListener('click',()=>copyList('SELL'));$('copyrep').addEventListener('click',()=>copyList('REPROCESS'));
