@@ -84,12 +84,14 @@ async function getOrders(typeId){
 }
 function fillValue(orders,qty){let left=qty,total=0;for(const o of orders){if(left<=0)break;const take=Math.min(left,o.volume_remain);total+=take*o.price;left-=take}return left===0?total:null}
 async function price(typeId,qty){return fillValue(await getOrders(typeId),qty)}
+async function buyOrderStatus(typeId,qty){const orders=await getOrders(typeId);const available=orders.reduce((sum,o)=>sum+o.volume_remain,0);return available===0?'No Jita 4-4 buy orders available':`Insufficient Jita 4-4 buy-order volume (${available.toLocaleString('en-GB')} available for ${qty.toLocaleString('en-GB')} units)`;}
 function makeRow(item){
  const wrap=document.createElement('div'),d=document.createElement('div');d.className='item';
  const left=document.createElement('div');
  const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';
  name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
  left.append(name);if(item.ammo&&item.action==='REPROCESS'){const detail=document.createElement('div');detail.className='hint note';detail.textContent=`Reprocess ${item.meltQty.toLocaleString('en-GB')} · Remaining ${item.remainder.toLocaleString('en-GB')} (sell)`;left.append(detail)}const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
+ if(item.action==='NO_BUY'){const note=document.createElement('div');note.className='hint note';note.textContent=item.buyStatus||'No valid buy orders for the full quantity';wrap.append(note);if(item.meltValuationComplete&&item.meltValue!=null){const value=document.createElement('div');value.className='hint note';value.textContent=`Potential reprocessing value: ${isk(item.meltValue)} (not a verified gain over selling)`;wrap.append(value)}}
  if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='Sell only · No reprocessing recipe in current EVE data';wrap.append(note)}
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
  if(item.action==='REPROCESS'){
@@ -100,13 +102,13 @@ function makeRow(item){
 }
 function render(){
  const query=$('search').value.trim().toLocaleLowerCase();
- for(const [id,action] of [['sell','SELL'],['rep','REPROCESS']]){
+ for(const [id,action] of [['sell','SELL'],['rep','REPROCESS'],['nobuy','NO_BUY']]){
   const all=results.filter(x=>x.action===action).sort(sort),list=all.filter(x=>x.name.toLocaleLowerCase().includes(query)),el=$(id);el.replaceChildren();
   if(!list.length)el.textContent=all.length?'No matching items':'No items';else list.forEach(x=>el.append(makeRow(x)));
-  const countId=action==='SELL'?'sellcount':action==='REPROCESS'?'repcount':'reviewcount';
+  const countId=action==='SELL'?'sellcount':action==='REPROCESS'?'repcount':'nobuycount';
   $(countId).textContent=`(${all.length}${query?' · '+list.length+' shown':''})`;
  }
- const valued=results.filter(x=>x.action!=='REVIEW');
+ const valued=results.filter(x=>x.action==='SELL'||x.action==='REPROCESS');
  const comparable=valued.filter(x=>x.sell!=null);
  const total=valued.reduce((s,x)=>s+x.best,0);
  const extra=comparable.reduce((s,x)=>s+x.best-x.sell,0);
@@ -118,7 +120,8 @@ function render(){
  const meltMissing=results.filter(x=>!x.sellOnly && (x.meltValue==null || x.meltValuationComplete!==true));
  const allMeltKnown=results.length>0 && meltMissing.length===0;
  const allMeltTotal=meltVerified.reduce((s,x)=>s+x.meltValue,0);
- const reviewCount=results.length-valued.length;
+ const reviewCount=results.filter(x=>x.action==='REVIEW').length;
+ const noBuyCount=results.filter(x=>x.action==='NO_BUY').length;
  const summary=$('summary');summary.replaceChildren();
  const cards=[
   {label:'ISK made from selling (incl. leftovers)',value:isk(sellTotal),icon:'sell-icon.png'},
@@ -140,6 +143,7 @@ function render(){
  const meltNote=document.createElement('p');meltNote.className='hint note';
  meltNote.textContent=allMeltKnown?`All-melt total includes verified recoverable materials. ${sellOnlyCount?sellOnlyCount+' item(s) have no recipe in the current data and are treated as sell-only; their sell value is excluded from the all-melt total. ':''}Items below their minimum reprocessing batch contribute zero; leftovers are excluded.`:`Full all-melt total unavailable: ${meltMissing.length} of ${results.length} item(s) lack verified melt values. ${meltVerified.length?'The figure above is a verified partial total, NOT the value of melting everything.':'No verified melting values are available.'} Missing: ${meltMissing.slice(0,8).map(x=>x.name).join(', ')}${meltMissing.length>8?', …':''}. Leftover units are excluded.`;
  summary.append(meltNote);
+ if(noBuyCount){const note=document.createElement('p');note.className='hint note';note.textContent=`${noBuyCount} item(s) lack sufficient Jita 4-4 buy orders and are excluded from verified selling comparisons and total potential ISK. Any displayed melt values are informational only.`;summary.append(note)}
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
@@ -159,7 +163,7 @@ async function calculate(){
       const sell=await price(typeId,item.qty);
       const reason='No verified reprocessing recipe available; melt comparison cannot be calculated.';
       if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,sellOnly:true,meltValue:null,meltValuationComplete:false});
-      else results.push({...item,action:'REVIEW',sell:null,meltValue:null,meltValuationComplete:false,reason:reason+' Insufficient Jita 4-4 buy orders to sell the full quantity.'});
+      else results.push({...item,action:'NO_BUY',sell:null,sellOnly:true,buyStatus:await buyOrderStatus(typeId,item.qty),meltValue:null,meltValuationComplete:false});
      }catch(e){results.push({...item,action:'REVIEW',meltValue:null,meltValuationComplete:false,reason:'Missing recipe; item/market lookup failed: '+e.message})}
      render();continue;
     }
@@ -175,7 +179,7 @@ async function calculate(){
     let meltValue=0,failure=null;
     if(meltQty===0){
      if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than ${portion} units required for a reprocessing batch; remaining ${remainder} must be sold.`});
-     else results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,action:'REVIEW',reason:'Below the minimum reprocessing batch and insufficient Jita buy orders to sell them.'});
+     else results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,action:'NO_BUY',buyStatus:await buyOrderStatus(def.id,item.qty)});
      render();continue;
     }
     for(const[materialId,amount]of def.materials){
@@ -191,13 +195,13 @@ async function calculate(){
     const details={ammo,meltQty,remainder,meltValue,leftoverValue,meltValuationComplete};
     if(failure){
      if(sell!==null)results.push({...item,...details,sell,best:sell,action:'SELL',reason:`Reprocessing comparison unavailable: ${failure}`});
-     else results.push({...item,action:'REVIEW',reason:`No full-stack item buy order; ${failure}`});
-    }else if(sell===null)results.push({...item,...details,sell:null,rep,best:rep,action:'REPROCESS'});
+     else results.push({...item,...details,action:'NO_BUY',sell:null,buyStatus:await buyOrderStatus(def.id,item.qty),reason:`Reprocessing valuation incomplete: ${failure}`});
+    }else if(sell===null)results.push({...item,...details,sell:null,rep,action:'NO_BUY',buyStatus:await buyOrderStatus(def.id,item.qty)});
     else results.push({...item,...details,sell,rep,best:Math.max(sell,rep),action:rep>sell?'REPROCESS':'SELL'});
    }catch(e){results.push({...item,action:'REVIEW',reason:'Market lookup failed: '+e.message})}
    render();
   }
-  $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
+  $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
  }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
 }
 function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${action==='REPROCESS'?(x.meltQty??x.qty):x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
@@ -205,6 +209,6 @@ $('go').addEventListener('click',calculate);$('search').addEventListener('input'
 $('copysell').addEventListener('click',()=>copyList('SELL'));$('copyrep').addEventListener('click',()=>copyList('REPROCESS'));
 $('export').addEventListener('click',()=>{
  const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';const lines=['Item,Quantity,Action,Sell ISK,Reprocess + Leftovers ISK,Best ISK,Reprocess Quantity,Remaining Quantity,Reason'];
- for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',r.meltQty??'',r.remainder??'',q(r.reason)].join(','));
+ for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',r.meltQty??'',r.remainder??'',q(r.reason||r.buyStatus)].join(','));
  const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });loadData();
