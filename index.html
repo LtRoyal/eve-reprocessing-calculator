@@ -77,21 +77,21 @@ body > .panel:has(> #summary) > h2{color:#ffe29a}
 #summary .summary-label{width:100%;text-align:center;line-height:1.4;margin-bottom:10px}
 #summary .summary-label.with-icon{justify-content:center;flex-wrap:wrap}
 #summary .summary-value{width:100%;text-align:center;line-height:1.3;font-size:clamp(1.15rem,2.8vw,1.75rem)}
-#summary .summary-grid > .summary-card:nth-child(1){border-color:var(--jita-border)}
-#summary .summary-grid > .summary-card:nth-child(1) .summary-value{color:var(--jita-cyan)}
-#summary .summary-grid > .summary-card:nth-child(2),
-#summary .summary-grid > .summary-card:nth-child(3){border-color:var(--isk-border)}
-#summary .summary-grid > .summary-card:nth-child(2) .summary-value,
-#summary .summary-grid > .summary-card:nth-child(3) .summary-value{color:var(--isk-gold)}
-#summary .summary-grid > .summary-card:nth-child(4){border-color:#53617a}
-#summary .summary-grid > .summary-card:nth-child(4) .summary-value{color:#f1f3f8}
+#summary .summary-grid > .summary-card.sell-return{border-color:var(--jita-border)}
+#summary .summary-grid > .summary-card.sell-return .summary-value{color:var(--jita-cyan)}
+#summary .summary-grid > .summary-card.melt-return,
+#summary .summary-grid > .summary-card.all-melt{border-color:var(--isk-border)}
+#summary .summary-grid > .summary-card.melt-return .summary-value,
+#summary .summary-grid > .summary-card.all-melt .summary-value{color:var(--isk-gold)}
+#summary .summary-grid > .summary-card.all-sold{border-color:#53617a}
+#summary .summary-grid > .summary-card.all-sold .summary-value{color:#f1f3f8}
 #summary .summary-card.gain{grid-column:1/-1;background:#122b28;border-color:#346451}
 /* The fifth card is the gain card; app.js may not add .gain to its outer element. */
 /* Swap the visual positions of total potential and all-melt cards. */
-#summary .summary-grid > .summary-card:nth-child(3){order:4}
-#summary .summary-grid > .summary-card:nth-child(4){order:3}
-#summary .summary-grid > .summary-card:nth-child(5){grid-column:1/-1;background:#122b28;border-color:#346451}
-#summary .summary-grid > .summary-card:nth-child(5) .summary-value{color:#a1e6b3}
+#summary .summary-grid > .summary-card.all-melt{order:4}
+#summary .summary-grid > .summary-card.all-sold{order:3}
+#summary .summary-grid > .summary-card.gain-return{grid-column:1/-1;background:#122b28;border-color:#346451}
+#summary .summary-grid > .summary-card.gain-return .summary-value{color:#a1e6b3}
 #summary .summary-card.gain .summary-value{color:#a1e6b3}
 #summary .summary-section > .summary-card.gain{width:100%}
 #summary .summary-description{text-align:center}
@@ -120,12 +120,12 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #summary .summary-heading.alternatives{padding-top:10px}
 #summary .summary-heading .alt-icon{font-size:20px;line-height:1}
 #summary .summary-grid > .summary-heading.recommended{order:0}
-#summary .summary-grid > .summary-card:nth-child(1){order:1}
-#summary .summary-grid > .summary-card:nth-child(2){order:2}
-#summary .summary-grid > .summary-card:nth-child(5){order:3}
+#summary .summary-grid > .summary-card.sell-return{order:1}
+#summary .summary-grid > .summary-card.melt-return{order:2}
+#summary .summary-grid > .summary-card.gain-return{order:3}
 #summary .summary-grid > .summary-heading.alternatives{order:4}
-#summary .summary-grid > .summary-card:nth-child(4){order:5}
-#summary .summary-grid > .summary-card:nth-child(3){order:6}
+#summary .summary-grid > .summary-card.all-sold{order:5}
+#summary .summary-grid > .summary-card.all-melt{order:6}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -161,11 +161,12 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   const addHeadings=()=>{
     const grid=summary.querySelector('.summary-grid');
     if(!grid || grid.querySelectorAll(':scope > .summary-card').length < 5)return;
+     grid.querySelectorAll(':scope > .summary-card').forEach((card,i)=>{card.classList.add(['sell-return','melt-return','all-melt','all-sold','gain-return'][i])});
     if(!grid.querySelector(':scope > .summary-heading.recommended')){
       const heading=document.createElement('div');
       heading.className='summary-heading recommended';
       const logo=document.createElement('img');logo.src='every-little-bit-logo.png';logo.alt='';logo.setAttribute('aria-hidden','true');
-      const title=document.createElement('span');title.textContent='Every Little Bit's Recommendation';
+      const title=document.createElement('span');title.textContent="Every Little Bit's Recommendation";
       heading.append(logo,title);grid.prepend(heading);
     }
     if(!grid.querySelector(':scope > .summary-heading.alternatives')){
