@@ -164,7 +164,7 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #summary .summary-card-subtitle{display:block;font-size:.78rem;color:#a7b6cc;line-height:1.4}
 #summary .summary-card.gain-return .summary-card-subtitle{color:#b9dccc}
 /* Snapshot sharing notice */
-#snapshot-link{margin:8px 0 4px;font-size:.9rem}#snapshot-link[hidden]{display:none}
+#start-fresh{background:#35465f}#start-fresh:hover{background:#48617e}
 .snapshot-notice{border:2px solid #a77b27;border-radius:10px;padding:12px 16px;margin:12px 0;background:#202b38;color:#ffe29a;line-height:1.5}
 #share-status{overflow-wrap:anywhere}
 
@@ -204,7 +204,7 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 <textarea id="inventory" placeholder="Paste items here"></textarea>
 <div class="controls"><label>Reprocessing yield (%)<input id="yield" type="number" value="55" min="0" max="100" step=".1"></label><label>Reprocessing tax (%)<input id="tax" type="number" value="0" min="0" max="100" step=".1"></label></div>
 <p class="hint" id="dataStatus">Checking automatic EVE static data…</p>
-<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button></div>
+<div class="toolbar"><button id="go">Calculate</button><button id="export" disabled>Export CSV</button><button id="start-fresh" type="button" title="Clear inventory and results and start again">↻ Start Fresh</button></div>
 <p id="share-status" class="hint note" role="status" hidden></p><p id="status" class="status hint" role="status">Ready.</p></div>
 <details class="panel search-panel" id="search-details">
  <summary class="search-toggle"><span>Find an item in the results</span><span class="search-chevron" aria-hidden="true"></span></summary>

@@ -301,6 +301,12 @@ $('breakdown-details').addEventListener('toggle',()=>{
 });
 
 function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${action==='REPROCESS'?(x.meltQty??x.qty):x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
+$('start-fresh').addEventListener('click',()=>{
+ if(!confirm('Start fresh? This will clear your inventory and results.'))return;
+ $('inventory').value='';$('yield').value='55';$('tax').value='0';
+ // Navigate to the clean page without the frozen snapshot ID or legacy fragment.
+ location.replace(location.origin+location.pathname);
+});
 $('go').addEventListener('click',calculate);$('search').addEventListener('input',render);
 $('copysell').addEventListener('click',()=>copyList('SELL'));$('copyrep').addEventListener('click',()=>copyList('REPROCESS'));
 $('export').addEventListener('click',()=>{
@@ -358,7 +364,7 @@ function clearSnapshotAddress(){
   url.searchParams.delete('s');if(url.hash.startsWith('#'+snapshotPrefix))url.hash='';
   history.replaceState(history.state,'',url.pathname+url.search+url.hash);
  }
- const input=$('snapshot-link');if(input){input.value='';input.hidden=true}
+ const input=$('snapshot-link');if(input)input.remove();
 }
 async function createShareSnapshot({automatic=false}={}){
  if(!results.length){snapshotMessage('Run a calculation before sharing a results snapshot.');return}
@@ -381,15 +387,10 @@ async function createShareSnapshot({automatic=false}={}){
   const url=new URL(location.pathname,location.origin);url.searchParams.set('s',saved.id);
   const link=url.href;
   history.replaceState(history.state,'',url.pathname+url.search);
-  let input=$('snapshot-link');
-  if(!input){input=document.createElement('input');input.id='snapshot-link';input.readOnly=true;
-   input.setAttribute('aria-label','Shareable snapshot link');
-   $('share-status').insertAdjacentElement('afterend',input)}
-  input.value=link;input.hidden=false;
   if(automatic){snapshotMessage('Shareable snapshot link added to the address bar! Copy the browser address to share these frozen results. Expires in 30 days.')}
   else try{await navigator.clipboard.writeText(link);
    snapshotMessage('Short frozen snapshot link copied! It expires in 30 days. Anyone with the link can see the inventory and saved results.');
-  }catch(e){snapshotMessage('Snapshot saved! Copy the short link from the field below.');input.focus();input.select();}
+  }catch(e){snapshotMessage('Snapshot saved! Copy the link from your browser address bar.');}
  }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}
 }
 function applyShareSnapshot(data){
