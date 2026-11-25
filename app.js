@@ -181,7 +181,9 @@ async function calculate(){
   if(!Number.isFinite(y)||!Number.isFinite(t)||y<0||y>1||t<0||t>1)throw Error('Yield and tax must be 0–100%.');
   if(!dataset){results=items.map(x=>({...x,action:'REVIEW',reason:'Automatic reprocessing dataset missing; no reliable recommendation possible.'}));render();$('status').textContent='Item import succeeded, but the EVE material dataset is not loaded.';return}
   for(let i=0;i<items.length;i++){
-   const item=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${item.name}`;await new Promise(resolve=>setTimeout(resolve,0));
+   const item=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${item.name}`;
+   // Refresh the results in batches rather than rebuilding the entire UI per item.
+   const refreshProgress=()=>{if((i+1)%8===0||i===items.length-1)render();};
    const def=dataset[item.name.toLowerCase()];
     if(!def){
      try{
@@ -190,7 +192,7 @@ async function calculate(){
       if(sell!==null)results.push({...item,action:'SELL',sell,best:sell,sellOnly:true,meltValue:null,meltValuationComplete:false});
       else results.push({...item,action:'NO_BUY',sell:null,sellOnly:true,buyStatus:await buyOrderStatus(typeId,item.qty),meltValue:null,meltValuationComplete:false});
      }catch(e){results.push({...item,action:'REVIEW',meltValue:null,meltValuationComplete:false,reason:'Missing recipe; item/market lookup failed: '+e.message})}
-     render();continue;
+     refreshProgress();continue;
     }
    try{
     // A missing full-stack item buy order does not prevent valuation of recovered materials.
@@ -206,15 +208,23 @@ async function calculate(){
     if(meltQty===0){
      if(sell!==null)results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,sell,best:sell,action:'SELL',reason:`Fewer than ${portion} units required for a reprocessing batch; remaining ${remainder} must be sold.`});
      else results.push({...item,ammo,meltQty,remainder,meltValue:0,meltValuationComplete:true,action:'NO_BUY',buyStatus:await buyOrderStatus(def.id,item.qty)});
-     render();continue;
+     refreshProgress();continue;
     }
+    // Build the recipe first; independent material market lookups can run together.
+    // Preserve recipe order when applying values and reporting the first failure.
     for(const[materialId,amount]of def.materials){
      if(!Number.isSafeInteger(amount)||amount<=0){failure='Invalid material quantity';break}
      const units=Math.floor(amount*(meltQty/portion)*y*(1-t));if(units===0)continue;
      recoveredMaterials.push({id:materialId,qty:units});
-     const materialValue=await price(materialId,units);
-     if(materialValue===null){failure=`Insufficient Jita buy orders for material type ${materialId}`;break}
-     meltValue+=materialValue;
+    }
+    if(!failure){
+     const materialValues=await Promise.all(recoveredMaterials.map(m=>price(m.id,m.qty).then(value=>({value}),error=>({error}))));
+     for(let j=0;j<recoveredMaterials.length;j++){
+      const outcome=materialValues[j];
+      if(outcome.error)throw outcome.error;
+      if(outcome.value===null){failure=`Insufficient Jita buy orders for material type ${recoveredMaterials[j].id}`;break}
+      meltValue+=outcome.value;
+     }
     }
     const meltValuationComplete=failure===null;
     if(remainder&&leftoverValue===null)failure=failure||'Insufficient Jita buy orders for remaining units';
@@ -226,7 +236,7 @@ async function calculate(){
     }else if(sell===null)results.push({...item,...details,sell:null,rep,action:'NO_BUY',buyStatus:await buyOrderStatus(def.id,item.qty)});
     else results.push({...item,...details,sell,rep,best:Math.max(sell,rep),action:rep>sell?'REPROCESS':'SELL'});
    }catch(e){results.push({...item,action:'REVIEW',reason:'Market lookup failed: '+e.message})}
-   render();
+   refreshProgress();
   }
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
    trackCompletedCalculation();
