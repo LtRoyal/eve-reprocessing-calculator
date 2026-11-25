@@ -185,8 +185,9 @@ function ensureCalculationProgress(){
  #elb-progress .elb-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#c48729,#ffd078);border-radius:99px;transition:width .2s ease}
  #elb-progress .elb-progress-count{margin-top:8px;text-align:right;font-variant-numeric:tabular-nums;font-size:.86em;color:#c5d1e1}
  #elb-nobuy-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
- #elb-nobuy-toggle .elb-chevron{font-size:1.1em;transition:transform .15s ease;display:inline-block}
- #elb-nobuy-toggle[aria-expanded=true] .elb-chevron{transform:rotate(90deg)}
+ #noBuyPanel h2{font-size:1.25rem;line-height:1.35}
+ #elb-nobuy-toggle .elb-chevron{display:inline-block;width:9px;height:9px;flex:none;margin-right:4px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s ease}
+ #elb-nobuy-toggle[aria-expanded=true] .elb-chevron{transform:rotate(225deg)}
  #elb-nobuy-toggle:focus-visible{outline:2px solid #ffb45e;outline-offset:5px;border-radius:4px}
  `;document.head.append(style);
  panel=document.createElement('div');panel.id='elb-progress';panel.hidden=true;panel.setAttribute('role','group');panel.setAttribute('aria-label','Calculation progress');
@@ -209,7 +210,7 @@ function ensureNoBuyToggle(){
  panel.append(content);
  const button=document.createElement('button');button.type='button';button.id='elb-nobuy-toggle';button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls',content.id);
  while(heading.firstChild)button.append(heading.firstChild);
- const chevron=document.createElement('span');chevron.className='elb-chevron';chevron.textContent='❯';chevron.setAttribute('aria-hidden','true');button.append(chevron);
+ const chevron=document.createElement('span');chevron.className='elb-chevron';chevron.textContent='';chevron.setAttribute('aria-hidden','true');button.append(chevron);
  heading.append(button);content.hidden=true;
  button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));content.hidden=!open;});
 }
