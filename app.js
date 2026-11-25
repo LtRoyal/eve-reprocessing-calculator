@@ -229,6 +229,7 @@ async function calculate(){
    render();
   }
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
+   trackCompletedCalculation();
   await createShareSnapshot({automatic:true});
  }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
 }
@@ -303,6 +304,7 @@ $('breakdown-details').addEventListener('toggle',()=>{
 function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${action==='REPROCESS'?(x.meltQty??x.qty):x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
 $('start-fresh').addEventListener('click',()=>{
  if(!confirm('Start fresh? This will clear your inventory and results.'))return;
+  trackUsage('start_fresh');
  $('inventory').value='';$('yield').value='55';$('tax').value='0';
  // Navigate to the clean page without the frozen snapshot ID or legacy fragment.
  location.replace(location.origin+location.pathname);
@@ -313,6 +315,7 @@ $('export').addEventListener('click',()=>{
  const q=s=>'"'+String(s??'').replaceAll('"','""')+'"';const lines=['Item,Quantity,Action,Sell ISK,Reprocess + Leftovers ISK,Best ISK,Reprocess Quantity,Remaining Quantity,Reason'];
  for(const r of [...results].sort(sort))lines.push([q(r.name),r.qty,r.action,r.sell??'',r.rep??'',r.best??'',r.meltQty??'',r.remainder??'',q(r.reason||r.buyStatus)].join(','));
  const url=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='eve-sell-reprocess.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  trackUsage('csv_export');
 });loadData();
 
 
@@ -334,6 +337,42 @@ $('export').addEventListener('click',()=>{
 })();
 const SNAPSHOT_API='https://dry-lake-db71every-little-bit-snapshots.armarlio2nd.workers.dev';
 const snapshotPrefix='elb-snapshot-v1=';
+// Anonymous private usage analytics: only event names and rounded ISK totals.
+// Values are sent in millions of ISK, not as exact ISK amounts.
+function trackUsage(type, fields={}){
+ try{
+  const payload=JSON.stringify({type,...fields});
+  fetch(SNAPSHOT_API+'/analytics',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:payload,keepalive:true
+  }).catch(()=>{}); // Analytics failures must never affect the calculator.
+ }catch(e){/* Optional telemetry only. */}
+}
+function roundedIskMillions(value){
+ return Number.isFinite(value)&&value>=0?Math.round(value/1_000_000):0;
+}
+function trackCompletedCalculation(){
+ if(!results.length)return;
+ const valued=results.filter(x=>x.action==='SELL'||x.action==='REPROCESS');
+ const comparable=valued.filter(x=>Number.isFinite(x.sell)&&Number.isFinite(x.best));
+ const sell=comparable.reduce((sum,x)=>sum+x.sell,0);
+ const recommended=comparable.reduce((sum,x)=>sum+x.best,0);
+ const extra=Math.max(0,recommended-sell);
+ const sellComponent=valued.filter(x=>x.action==='SELL').reduce((sum,x)=>sum+(Number.isFinite(x.best)?x.best:0),0)
+  +valued.filter(x=>x.action==='REPROCESS').reduce((sum,x)=>sum+(Number.isFinite(x.leftoverValue)?x.leftoverValue:0),0);
+ const meltComponent=valued.filter(x=>x.action==='REPROCESS').reduce((sum,x)=>sum+(Number.isFinite(x.meltValue)?x.meltValue:0),0);
+ trackUsage('calculation_completed',{
+  sell_isk_m:roundedIskMillions(sell),
+  recommended_isk_m:roundedIskMillions(recommended),
+  extra_isk_m:roundedIskMillions(extra),
+  sell_component_isk_m:roundedIskMillions(sellComponent),
+  melt_component_isk_m:roundedIskMillions(meltComponent),
+  item_count:results.length,
+  valued_count:comparable.length,
+  unavailable_count:results.length-comparable.length
+ });
+}
+
 function base64urlToBytes(value){
  const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));
  return Uint8Array.from(raw,c=>c.charCodeAt(0));
@@ -387,9 +426,9 @@ async function createShareSnapshot({automatic=false}={}){
   const url=new URL(location.pathname,location.origin);url.searchParams.set('s',saved.id);
   const link=url.href;
   history.replaceState(history.state,'',url.pathname+url.search);
-  if(automatic){snapshotMessage('Shareable snapshot link added to the address bar! Copy the browser address to share these frozen results. Expires in 30 days.')}
+  if(automatic){snapshotMessage('Shareable snapshot link added to the address bar! Copy the browser address to share these frozen results. Expires in 7 days.')}
   else try{await navigator.clipboard.writeText(link);
-   snapshotMessage('Short frozen snapshot link copied! It expires in 30 days. Anyone with the link can see the inventory and saved results.');
+   snapshotMessage('Short frozen snapshot link copied! It expires in 7 days. Anyone with the link can see the inventory and saved results.');
   }catch(e){snapshotMessage('Snapshot saved! Copy the link from your browser address bar.');}
  }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}
 }
@@ -505,6 +544,7 @@ restoreShareSnapshot();
    const response=await fetch(SNAPSHOT_API+'/bugs',{method:'POST',body:data});
    if(!response.ok){let detail='HTTP '+response.status;try{const j=await response.json();if(j.error)detail=j.error;}catch(e){}throw Error(detail);}
    message('Bug report sent. Thank you! o7');
+    trackUsage('bug_report_sent');
    form.reset();setPreview(null);captureStatus.textContent='';
   }catch(e){message('Could not send the report: '+e.message+'. Please try again later.');}
   finally{button.disabled=false;}
