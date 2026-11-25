@@ -173,17 +173,59 @@ function render(){
  if(reviewCount){const warning=document.createElement('p');warning.className='bad';warning.textContent=`⚠ ${reviewCount} item(s) could not be valued and are excluded from the totals. See the calculation status above; export CSV for item-specific reasons.`;summary.append(warning)}
  $('export').disabled=!results.length;$('copysell').disabled=!results.some(x=>x.action==='SELL');$('copyrep').disabled=!results.some(x=>x.action==='REPROCESS');
 }
+// Lightweight, accessible calculation progress indicator. No pricing logic is changed.
+function ensureCalculationProgress(){
+ let panel=$('elb-progress');if(panel)return panel;
+ const style=document.createElement('style');style.textContent=`
+ #elb-progress{margin:12px 0;padding:15px 17px;border:1px solid #b98536;border-radius:12px;background:#192437;color:#e9edf5}
+ #elb-progress[hidden]{display:none!important}
+ #elb-progress .elb-progress-title{font-weight:700;color:#ffb45e;margin-bottom:6px}
+ #elb-progress .elb-progress-description{font-size:.92em;line-height:1.5;color:#c5d1e1;margin-bottom:12px}
+ #elb-progress .elb-progress-track{height:11px;border-radius:99px;background:#354154;overflow:hidden}
+ #elb-progress .elb-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#c48729,#ffd078);border-radius:99px;transition:width .2s ease}
+ #elb-progress .elb-progress-count{margin-top:8px;text-align:right;font-variant-numeric:tabular-nums;font-size:.86em;color:#c5d1e1}
+ #elb-nobuy-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+ #elb-nobuy-toggle .elb-chevron{font-size:1.1em;transition:transform .15s ease;display:inline-block}
+ #elb-nobuy-toggle[aria-expanded=true] .elb-chevron{transform:rotate(90deg)}
+ #elb-nobuy-toggle:focus-visible{outline:2px solid #ffb45e;outline-offset:5px;border-radius:4px}
+ `;document.head.append(style);
+ panel=document.createElement('div');panel.id='elb-progress';panel.hidden=true;panel.setAttribute('role','group');panel.setAttribute('aria-label','Calculation progress');
+ panel.innerHTML='<div class="elb-progress-title">Calculating your loot’s value…</div><div class="elb-progress-description">Every Little Bit is checking Jita 4-4 buy orders and reprocessing values to help you get the most ISK from your loot. Larger inventories may take a little longer to process.</div><div class="elb-progress-track" role="progressbar" aria-label="Items checked" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="elb-progress-fill"></div></div><div class="elb-progress-count">0 / 0 items checked</div>';
+ $('status').insertAdjacentElement('beforebegin',panel);return panel;
+}
+function setCalculationProgress(done,total){
+ const panel=ensureCalculationProgress();panel.hidden=false;
+ const percent=total?Math.round(100*done/total):0;
+ panel.querySelector('.elb-progress-fill').style.width=percent+'%';
+ const track=panel.querySelector('[role="progressbar"]');track.setAttribute('aria-valuenow',String(percent));
+ panel.querySelector('.elb-progress-count').textContent=`${done.toLocaleString('en-GB')} / ${total.toLocaleString('en-GB')} items checked`;
+}
+function hideCalculationProgress(){const panel=$('elb-progress');if(panel)panel.hidden=true;}
+function ensureNoBuyToggle(){
+ const panel=$('noBuyPanel');if(!panel||panel.querySelector('#elb-nobuy-toggle'))return;
+ const heading=panel.querySelector('h2');if(!heading)return;
+ const content=document.createElement('div');content.id='elb-nobuy-content';
+ while(heading.nextSibling)content.append(heading.nextSibling);
+ panel.append(content);
+ const button=document.createElement('button');button.type='button';button.id='elb-nobuy-toggle';button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls',content.id);
+ while(heading.firstChild)button.append(heading.firstChild);
+ const chevron=document.createElement('span');chevron.className='elb-chevron';chevron.textContent='❯';chevron.setAttribute('aria-hidden','true');button.append(chevron);
+ heading.append(button);content.hidden=true;
+ button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));content.hidden=!open;});
+}
+ensureNoBuyToggle();
 async function calculate(){
- const btn=$('go');if(btn.disabled)return;btn.disabled=true;clearSnapshotAddress();results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
+ const btn=$('go');if(btn.disabled)return;btn.disabled=true;hideCalculationProgress();clearSnapshotAddress();results=[];breakdownVersion++;breakdownLoaded=-1;resetBreakdown();marketInfo.requests=0;marketInfo.reused=0;updateMarketInfo();
  try{
   const{items,bad}=parseInventory($('inventory').value);if(!items.length)throw Error('Paste valid EVE item rows first.');
   const y=Number($('yield').value)/100,t=Number($('tax').value)/100;
   if(!Number.isFinite(y)||!Number.isFinite(t)||y<0||y>1||t<0||t>1)throw Error('Yield and tax must be 0–100%.');
+  setCalculationProgress(0,items.length);
   if(!dataset){results=items.map(x=>({...x,action:'REVIEW',reason:'Automatic reprocessing dataset missing; no reliable recommendation possible.'}));render();$('status').textContent='Item import succeeded, but the EVE material dataset is not loaded.';return}
   for(let i=0;i<items.length;i++){
    const item=items[i];$('status').textContent=`Checking ${i+1}/${items.length}: ${item.name}`;
    // Refresh the results in batches rather than rebuilding the entire UI per item.
-   const refreshProgress=()=>{if((i+1)%8===0||i===items.length-1)render();};
+   const refreshProgress=()=>{setCalculationProgress(i+1,items.length);if((i+1)%8===0||i===items.length-1)render();};
    const def=dataset[item.name.toLowerCase()];
     if(!def){
      try{
@@ -241,7 +283,7 @@ async function calculate(){
   $('status').textContent=`Finished: ${results.filter(x=>x.action!=='REVIEW').length} valued, ${results.filter(x=>x.action==='NO_BUY').length} without sufficient buy orders, ${results.filter(x=>x.action==='REVIEW').length} need review.${bad.length?' Invalid inventory lines: '+bad.join(', '):''}`;
    trackCompletedCalculation();
   await createShareSnapshot({automatic:true});
- }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false}
+ }catch(e){$('status').textContent='Unable to calculate: '+e.message;render()}finally{btn.disabled=false;hideCalculationProgress()}
 }
 
 // The expandable material table is informational and never changes recommendations.
@@ -443,6 +485,7 @@ async function createShareSnapshot({automatic=false}={}){
  }catch(e){snapshotMessage((automatic?'Calculation completed, but automatic sharing failed: ':'Unable to save snapshot: ')+e.message)}
 }
 function applyShareSnapshot(data){
+ hideCalculationProgress();
  if(data.v!==1||!Array.isArray(data.results)||typeof data.inventory!=='string'||!data.created)throw Error('Invalid snapshot format');
   $('inventory').value=data.inventory;$('yield').value=data.yield;$('tax').value=data.tax;
   results=data.results;render();$('status').textContent=data.status||'Frozen calculation restored.';
