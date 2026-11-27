@@ -119,6 +119,16 @@ function makeRow(item){
  if(item.action==='NO_BUY'){const note=document.createElement('div');note.className='hint note';note.textContent=item.buyStatus||'No valid buy orders for the full quantity';wrap.append(note);if(item.meltValuationComplete&&item.meltValue!=null){const value=document.createElement('div');value.className='hint note';value.textContent=`Potential reprocessing value: ${isk(item.meltValue)} (not a verified gain over selling)`;wrap.append(value)}}
  if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='No reprocessing recipe available; better to sell to buy orders';wrap.append(note)}
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
+ if(item.action==='SELL' && !item.sellOnly){
+  const note=document.createElement('div');note.className='hint note';
+  if(item.meltValuationComplete===true && item.meltValue!=null && item.leftoverValue!=null && item.sell!=null){
+   const alternative=item.meltValue+item.leftoverValue;
+   note.textContent=`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue)} · Extra from selling: ${isk(item.sell-alternative)}`;
+  }else{
+   note.textContent=`Sell all: ${isk(item.sell)} · Melt: unavailable (comparison could not be verified)`;
+  }
+  wrap.append(note);
+ }
  if(item.action==='REPROCESS'){
   const note=document.createElement('div');note.className='hint note';
   note.textContent=item.sell==null?`Sell: unavailable (insufficient Jita buy-order volume) · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue||0)} · Difference: unknown`:`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue||0)} · Extra: ${isk(item.rep-item.sell)}`;
