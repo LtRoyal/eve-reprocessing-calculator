@@ -122,8 +122,7 @@ function makeRow(item){
  if(item.action==='SELL' && !item.sellOnly){
   const note=document.createElement('div');note.className='hint note';
   if(item.meltValuationComplete===true && item.meltValue!=null && item.leftoverValue!=null && item.sell!=null){
-   const alternative=item.meltValue+item.leftoverValue;
-   note.textContent=`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue)} · Extra from selling: ${isk(item.sell-alternative)}`;
+   note.textContent=`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)}`;
   }else{
    note.textContent=`Sell all: ${isk(item.sell)} · Melt: unavailable (comparison could not be verified)`;
   }
