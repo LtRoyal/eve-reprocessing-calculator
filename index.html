@@ -198,6 +198,12 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 #bug-preview{display:block;max-width:100%;max-height:220px;object-fit:contain;margin-top:8px;border:1px solid #546680;border-radius:6px}
 #bug-preview[hidden],#bug-status[hidden]{display:none}
 #bug-status{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Keep item quantity beside its name, separate from the right-aligned ISK price. */
+.item>div:first-child{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.item .item-label{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:9px;min-width:0}
+.item .item-quantity{color:#e9eff9;font-family:system-ui,Arial,sans-serif;font-weight:400;font-size:1em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.item .number{white-space:nowrap}
 </style></head><body>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
@@ -286,6 +292,6 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
   <div class="bug-actions"><button type="submit" id="bug-send">Send Bug Report</button><button type="button" id="bug-close">Cancel</button></div>
  </form>
 </dialog>
-<script src="app.js?v=64" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
+<script src="app.js?v=65" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"096987d7c9c546278eb214b837677eee"}'></script>
 </body></html>

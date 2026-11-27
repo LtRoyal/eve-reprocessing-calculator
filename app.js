@@ -111,7 +111,11 @@ function makeRow(item){
  const left=document.createElement('div');
  const name=document.createElement('button');name.textContent=item.name;name.title='Copy item name';
  name.onclick=async()=>{try{await navigator.clipboard.writeText(item.name);name.textContent='✓ Copied: '+item.name;setTimeout(()=>name.textContent=item.name,1200)}catch(e){$('status').textContent='Clipboard permission denied. Please allow clipboard access.'}};
- left.append(name);if(item.ammo&&item.action==='REPROCESS'){const detail=document.createElement('div');detail.className='hint note';detail.textContent=`Reprocess ${item.meltQty.toLocaleString('en-GB')} · Remaining ${item.remainder.toLocaleString('en-GB')} (sell)`;left.append(detail)}const right=document.createElement('span');right.className='number';right.textContent='×'+item.qty+(item.best==null?'':'  '+isk(item.best));d.append(left,right);wrap.append(d);
+ const label=document.createElement('span');label.className='item-label';
+ const quantity=document.createElement('span');quantity.className='item-quantity';quantity.textContent='×'+item.qty.toLocaleString('en-GB');
+ label.append(name,quantity);left.append(label);
+ if(item.ammo&&item.action==='REPROCESS'){const detail=document.createElement('div');detail.className='hint note';detail.textContent=`Reprocess ${item.meltQty.toLocaleString('en-GB')} · Remaining ${item.remainder.toLocaleString('en-GB')} (sell)`;left.append(detail)}
+ const right=document.createElement('span');right.className='number';right.textContent=item.best==null?'':isk(item.best);d.append(left,right);wrap.append(d);
  if(item.action==='NO_BUY'){const note=document.createElement('div');note.className='hint note';note.textContent=item.buyStatus||'No valid buy orders for the full quantity';wrap.append(note);if(item.meltValuationComplete&&item.meltValue!=null){const value=document.createElement('div');value.className='hint note';value.textContent=`Potential reprocessing value: ${isk(item.meltValue)} (not a verified gain over selling)`;wrap.append(value)}}
  if(item.sellOnly){const note=document.createElement('div');note.className='hint note';note.textContent='No reprocessing recipe available; better to sell to buy orders';wrap.append(note)}
  if(item.reason){const note=document.createElement('div');note.className='hint bad';note.textContent=item.reason;wrap.append(note)}
