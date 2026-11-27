@@ -356,7 +356,6 @@ $('breakdown-details').addEventListener('toggle',()=>{
 
 function copyList(action){const list=results.filter(x=>x.action===action).sort(sort).map(x=>`${x.name}\t${action==='REPROCESS'?(x.meltQty??x.qty):x.qty}`).join('\n');navigator.clipboard.writeText(list).then(()=>$('status').textContent=`${action} list copied.`).catch(()=>$('status').textContent='Clipboard permission denied.')}
 $('start-fresh').addEventListener('click',()=>{
- if(!confirm('Start fresh? This will clear your inventory and results.'))return;
   trackUsage('start_fresh');
  $('inventory').value='';$('yield').value='55';$('tax').value='0';
  // Navigate to the clean page without the frozen snapshot ID or legacy fragment.
