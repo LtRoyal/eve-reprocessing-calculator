@@ -130,7 +130,7 @@ function makeRow(item){
  }
  if(item.action==='REPROCESS'){
   const note=document.createElement('div');note.className='hint note';
-  note.textContent=item.sell==null?`Sell: unavailable (insufficient Jita buy-order volume) · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue||0)} · Difference: unknown`:`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)} · Leftovers: ${isk(item.leftoverValue||0)} · Extra: ${isk(item.rep-item.sell)}`;
+  note.textContent=item.sell==null?`Sell: unavailable (insufficient Jita buy-order volume) · Melt: ${isk(item.meltValue)}`:`Sell all: ${isk(item.sell)} · Melt: ${isk(item.meltValue)} · Extra: ${isk(item.rep-item.sell)}`;
   wrap.append(note);
  }return wrap;
 }
