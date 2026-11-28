@@ -205,8 +205,8 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .item .item-quantity{color:#e9eff9;font-family:system-ui,Arial,sans-serif;font-weight:400;font-size:1em;white-space:nowrap;font-variant-numeric:tabular-nums}
 .item .number{white-space:nowrap}
 
-/* Community Spotlight: desktop-only left gutter; calculator width and positioning unchanged. */
-.community-spotlight{position:absolute;top:24px;left:calc(50% - 560px - 244px);width:224px;box-sizing:border-box;color:#e9eff9}
+/* Community Spotlight: adaptive left gutter, aligned with Inventory; calculator unchanged. */
+.community-spotlight{position:absolute;top:0;left:16px;width:224px;box-sizing:border-box;color:#e9eff9;display:none}
 .community-spotlight h2{font-size:.95rem;text-align:center;margin:0 0 12px;letter-spacing:.06em}
 .spotlight-list{display:flex;flex-direction:column;gap:10px}
 .spotlight-entry{border:1px solid #35465f;background:#182336;border-radius:10px;overflow:hidden}
@@ -225,7 +225,7 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .spotlight-expanded p{font-size:.77rem;line-height:1.5;color:#c5d0df;margin:10px 0 0}
 .spotlight-expanded .spotlight-placeholder-link{display:block;margin-top:9px;font-size:.72rem;color:#9fc3ff;font-style:italic}
 @keyframes spotlight-reveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:1650px){.community-spotlight{display:none}}
+
 @media(prefers-reduced-motion:reduce){.spotlight-arrow,.spotlight-expanded{transition:none;animation:none}}
 </style></head><body>
 <aside class="community-spotlight" aria-label="Community Spotlight"><h2>COMMUNITY SPOTLIGHT</h2><div class="spotlight-list">
@@ -326,6 +326,27 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
   <div class="bug-actions"><button type="submit" id="bug-send">Send Bug Report</button><button type="button" id="bug-close">Cancel</button></div>
  </form>
 </dialog>
+<script>
+/* Position the left spotlight alongside Inventory without reducing calculator width.
+   Recalculate on browser resize/zoom; hide when the left gutter is too narrow. */
+(function(){
+  const sidebar=document.querySelector('.community-spotlight');
+  const inventory=document.querySelector('#inventory')?.closest('.panel');
+  if(!sidebar||!inventory)return;
+  function positionSpotlight(){
+    const rect=inventory.getBoundingClientRect();
+    const edge=16, gap=48, minWidth=150, maxWidth=224;
+    const available=rect.left-edge-gap;
+    if(available<minWidth){sidebar.style.display='none';return;}
+    sidebar.style.width=Math.min(maxWidth,available)+'px';
+    sidebar.style.top=(rect.top+window.scrollY)+'px';
+    sidebar.style.display='block';
+  }
+  window.addEventListener('resize',positionSpotlight,{passive:true});
+  if(document.fonts?.ready)document.fonts.ready.then(positionSpotlight);
+  positionSpotlight();
+})();
+</script>
 <script src="app.js?v=20261127b-extra-isk-potential" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"096987d7c9c546278eb214b837677eee"}'></script>
 </body></html>
