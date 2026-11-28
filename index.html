@@ -347,8 +347,8 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
     sidebar.style.position='absolute';
     sidebar.style.width=width+'px';
     sidebar.style.left=left+'px';
-    // The marked area begins slightly above the Inventory panel.
-    sidebar.style.top=(rect.top+window.scrollY-46)+'px';
+    // Align the top of Community Spotlight with the Inventory panel.
+    sidebar.style.top=(rect.top+window.scrollY)+'px';
     sidebar.style.display='block';
   }
   function schedulePosition(){if(!frame)frame=requestAnimationFrame(positionSpotlight);}
