@@ -347,9 +347,12 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
     sidebar.style.position='absolute';
     sidebar.style.width=width+'px';
     sidebar.style.left=left+'px';
-    // Align the top of Community Spotlight with the Inventory panel.
-    sidebar.style.top=(rect.top+window.scrollY)+'px';
+    // Align the FIRST spotlight card with the Inventory panel's top border.
+    // The heading sits naturally above the card, without a hard-coded offset.
     sidebar.style.display='block';
+    const firstCard=sidebar.querySelector('.spotlight-entry');
+    const cardOffset=firstCard ? firstCard.getBoundingClientRect().top-sidebar.getBoundingClientRect().top : 0;
+    sidebar.style.top=(rect.top+window.scrollY-cardOffset)+'px';
   }
   function schedulePosition(){if(!frame)frame=requestAnimationFrame(positionSpotlight);}
   window.addEventListener('resize',schedulePosition,{passive:true});
@@ -359,6 +362,6 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
   schedulePosition();
 })();
 </script>
-<script src="app.js?v=20261128-spotlight-readable" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
+<script src="app.js?v=20261128-spotlight-cards-aligned" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"096987d7c9c546278eb214b837677eee"}'></script>
 </body></html>
