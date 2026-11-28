@@ -364,18 +364,28 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
     if(gutterWidth<minWidth){sidebar.style.display='none';return;}
     const width=Math.min(maxWidth,gutterWidth);
     const left=pageEdge+(gutterWidth-width)/2;
-    sidebar.style.position='absolute';
     sidebar.style.width=width+'px';
     sidebar.style.left=left+'px';
-    // Align the FIRST spotlight card with the Inventory panel's top border.
-    // The heading sits naturally above the card, without a hard-coded offset.
     sidebar.style.display='block';
+    // Preserve the original first-card alignment until scrolling reaches the
+    // 20px sticky threshold; then keep the sidebar in the viewport.
     const firstCard=sidebar.querySelector('.spotlight-entry');
-    const cardOffset=firstCard ? firstCard.getBoundingClientRect().top-sidebar.getBoundingClientRect().top : 0;
-    sidebar.style.top=(rect.top+window.scrollY-cardOffset)+'px';
+    const heading=sidebar.querySelector('h2');
+    const cardOffset=heading ? heading.getBoundingClientRect().height+parseFloat(getComputedStyle(heading).marginBottom||0) : 0;
+    const originalTop=rect.top+window.scrollY-cardOffset;
+    const stickyTop=20;
+    const isSticky=window.scrollY>=originalTop-stickyTop;
+    sidebar.style.position=isSticky?'fixed':'absolute';
+    sidebar.style.top=(isSticky?stickyTop:originalTop)+'px';
+    // When an expanded card makes the sidebar taller than the window,
+    // scroll its contents independently instead of cutting them off.
+    sidebar.style.maxHeight=isSticky?'calc(100vh - 40px)':'none';
+    sidebar.style.overflowY=isSticky?'auto':'visible';
+    sidebar.style.overscrollBehavior='contain';
   }
   function schedulePosition(){if(!frame)frame=requestAnimationFrame(positionSpotlight);}
   window.addEventListener('resize',schedulePosition,{passive:true});
+  window.addEventListener('scroll',schedulePosition,{passive:true});
   if(window.visualViewport)window.visualViewport.addEventListener('resize',schedulePosition,{passive:true});
   if(window.ResizeObserver){new ResizeObserver(schedulePosition).observe(inventory);}
   if(document.fonts?.ready)document.fonts.ready.then(schedulePosition);
