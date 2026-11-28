@@ -205,7 +205,7 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .item .item-quantity{color:#e9eff9;font-family:system-ui,Arial,sans-serif;font-weight:400;font-size:1em;white-space:nowrap;font-variant-numeric:tabular-nums}
 .item .number{white-space:nowrap}
 
-/* Community Spotlight: adaptive left gutter, aligned with Inventory; calculator unchanged. */
+/* Community Spotlight: centered in adaptive left gutter, aligned with Inventory; calculator unchanged. */
 .community-spotlight{position:absolute;top:0;left:16px;width:224px;box-sizing:border-box;color:#e9eff9;display:none}
 .community-spotlight h2{font-size:.95rem;text-align:center;margin:0 0 12px;letter-spacing:.06em}
 .spotlight-list{display:flex;flex-direction:column;gap:10px}
@@ -327,24 +327,36 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
  </form>
 </dialog>
 <script>
-/* Position the left spotlight alongside Inventory without reducing calculator width.
-   Recalculate on browser resize/zoom; hide when the left gutter is too narrow. */
+/* Keep the spotlight centred in the actual free column to the left of Inventory.
+   Uses viewport geometry (not the page container's CSS positioning) and responds
+   to zoom, resize, font loading, and changes to the calculator's dimensions. */
 (function(){
   const sidebar=document.querySelector('.community-spotlight');
   const inventory=document.querySelector('#inventory')?.closest('.panel');
   if(!sidebar||!inventory)return;
+  let frame=0;
   function positionSpotlight(){
+    frame=0;
     const rect=inventory.getBoundingClientRect();
-    const edge=16, gap=48, minWidth=150, maxWidth=224;
-    const available=rect.left-edge-gap;
-    if(available<minWidth){sidebar.style.display='none';return;}
-    sidebar.style.width=Math.min(maxWidth,available)+'px';
-    sidebar.style.top=(rect.top+window.scrollY)+'px';
+    const pageEdge=12, calculatorGap=48, minWidth=150, maxWidth=224;
+    const gutterRight=rect.left-calculatorGap;
+    const gutterWidth=gutterRight-pageEdge;
+    if(gutterWidth<minWidth){sidebar.style.display='none';return;}
+    const width=Math.min(maxWidth,gutterWidth);
+    const left=pageEdge+(gutterWidth-width)/2;
+    sidebar.style.position='absolute';
+    sidebar.style.width=width+'px';
+    sidebar.style.left=left+'px';
+    // The marked area begins slightly above the Inventory panel.
+    sidebar.style.top=(rect.top+window.scrollY-46)+'px';
     sidebar.style.display='block';
   }
-  window.addEventListener('resize',positionSpotlight,{passive:true});
-  if(document.fonts?.ready)document.fonts.ready.then(positionSpotlight);
-  positionSpotlight();
+  function schedulePosition(){if(!frame)frame=requestAnimationFrame(positionSpotlight);}
+  window.addEventListener('resize',schedulePosition,{passive:true});
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',schedulePosition,{passive:true});
+  if(window.ResizeObserver){new ResizeObserver(schedulePosition).observe(inventory);}
+  if(document.fonts?.ready)document.fonts.ready.then(schedulePosition);
+  schedulePosition();
 })();
 </script>
 <script src="app.js?v=20261127b-extra-isk-potential" defer></script><!-- Cloudflare Web Analytics: page views and visits -->
