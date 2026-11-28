@@ -338,7 +338,7 @@ document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListe
   function positionSpotlight(){
     frame=0;
     const rect=inventory.getBoundingClientRect();
-    const pageEdge=12, calculatorGap=48, minWidth=190, maxWidth=260;
+    const pageEdge=12, calculatorGap=48, minWidth=190, maxWidth=360;
     const gutterRight=rect.left-calculatorGap;
     const gutterWidth=gutterRight-pageEdge;
     if(gutterWidth<minWidth){sidebar.style.display='none';return;}
