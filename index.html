@@ -204,7 +204,41 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .item .item-label{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:9px;min-width:0}
 .item .item-quantity{color:#e9eff9;font-family:system-ui,Arial,sans-serif;font-weight:400;font-size:1em;white-space:nowrap;font-variant-numeric:tabular-nums}
 .item .number{white-space:nowrap}
+
+/* Community Spotlight: desktop-only left gutter; calculator width and positioning unchanged. */
+.community-spotlight{position:absolute;top:24px;left:calc(50% - 560px - 244px);width:224px;box-sizing:border-box;color:#e9eff9}
+.community-spotlight h2{font-size:.95rem;text-align:center;margin:0 0 12px;letter-spacing:.06em}
+.spotlight-list{display:flex;flex-direction:column;gap:10px}
+.spotlight-entry{border:1px solid #35465f;background:#182336;border-radius:10px;overflow:hidden}
+.spotlight-entry summary{list-style:none;cursor:pointer;display:block;outline-offset:-2px}
+.spotlight-entry summary::-webkit-details-marker{display:none}
+.spotlight-banner{height:43px;background:linear-gradient(120deg,#202e45,#31415a 50%,#19283e);display:flex;align-items:center;justify-content:center;color:#8497af;font-size:.72rem;letter-spacing:.035em}
+.spotlight-banner::before{content:'▧';font-size:18px;opacity:.65;margin-right:6px}
+.spotlight-brief{padding:8px 10px;display:flex;align-items:center;gap:6px}
+.spotlight-brief-text{min-width:0;flex:1}
+.spotlight-name{display:block;font-size:.85rem;font-weight:700;line-height:1.25}
+.spotlight-teaser{display:block;font-size:.7rem;color:#a7b6cc;line-height:1.3;margin-top:3px}
+.spotlight-arrow{font-size:.95rem;color:#a7b6cc;transition:transform .2s ease}
+.spotlight-entry[open] .spotlight-arrow{transform:rotate(180deg)}
+.spotlight-expanded{padding:10px;border-top:1px solid #35465f;animation:spotlight-reveal .2s ease-out}
+.spotlight-large-image{height:108px;border-radius:6px;background:linear-gradient(135deg,#22334f,#415775,#1b2b42);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:#a7b6cc}
+.spotlight-expanded p{font-size:.77rem;line-height:1.5;color:#c5d0df;margin:10px 0 0}
+.spotlight-expanded .spotlight-placeholder-link{display:block;margin-top:9px;font-size:.72rem;color:#9fc3ff;font-style:italic}
+@keyframes spotlight-reveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:1650px){.community-spotlight{display:none}}
+@media(prefers-reduced-motion:reduce){.spotlight-arrow,.spotlight-expanded{transition:none;animation:none}}
 </style></head><body>
+<aside class="community-spotlight" aria-label="Community Spotlight"><h2>COMMUNITY SPOTLIGHT</h2><div class="spotlight-list">
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community One</span><span class="spotlight-teaser">New player help and friendly fleets</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>A welcoming community for new and returning capsuleers. Meet pilots, ask questions and discover fleets across New Eden.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community Two</span><span class="spotlight-teaser">Mining, industry and trading</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>For pilots who enjoy building, mining and trading. Share expertise and find others working across New Eden’s industrial economy.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community Three</span><span class="spotlight-teaser">PvP fleets and events</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>Find fleets, learn tactics and connect with pilots interested in PvP and community events.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community Four</span><span class="spotlight-teaser">Tools, guides and resources</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>Explore useful EVE tools, educational guides and player-created resources.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community Five</span><span class="spotlight-teaser">Exploration and discovery</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>For capsuleers interested in exploration, wormholes and discovering what lies beyond the next stargate.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+<details class="spotlight-entry"><summary><div class="spotlight-banner" aria-hidden="true">Banner placeholder</div><div class="spotlight-brief"><span class="spotlight-brief-text"><span class="spotlight-name">Community Six</span><span class="spotlight-teaser">Creators and community projects</span></span><span class="spotlight-arrow" aria-hidden="true">⌄</span></div></summary><div class="spotlight-expanded"><div class="spotlight-large-image" aria-hidden="true">Full image placeholder</div><p>Discover EVE creators, websites and projects made by the community.</p><span class="spotlight-placeholder-link">Community links will appear here</span></div></details>
+</div></aside>
+<script>/* Spotlight only: expanding one entry closes the others. */
+document.querySelectorAll('.spotlight-entry').forEach(entry=>entry.addEventListener('toggle',()=>{if(entry.open)document.querySelectorAll('.spotlight-entry').forEach(other=>{if(other!==entry)other.open=false})}));
+</script>
 <header><img class="site-banner" src="every-little-bit-banner.png" alt="Jita 4-4 buy orders, 55% default yield — Every Little Bit: Squeeze Every Last ISK" width="2172" height="355"></header>
 <section class="panel" aria-label="About Every Little Bit" style="border-color:#35465f;margin-top:10px">
   <div style="color:#ffd35a;font-weight:700;margin-bottom:8px">Make every bit of ISK count.</div>
