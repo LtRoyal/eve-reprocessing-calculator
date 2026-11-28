@@ -235,6 +235,10 @@ body > .panel:has(> #summary){border:2px solid var(--isk-border)}
 .spotlight-artists-preview img{display:block;width:100%;height:100%;object-fit:cover;min-width:0}
 .spotlight-artists-preview img:first-child{object-position:50% 50%}
 .spotlight-artists-preview img:last-child{object-position:50% 70%}
+/* Dim only the artist previews while the spotlight is collapsed. */
+.spotlight-artists-preview img{filter:brightness(.65) saturate(.72);opacity:.78;transition:filter .25s ease,opacity .25s ease}
+.spotlight-entry[open] .spotlight-artists-preview img{filter:none;opacity:1}
+@media(prefers-reduced-motion:reduce){.spotlight-artists-preview img{transition:none}}
 .spotlight-artist-links a{display:block;border:1px solid #35465f;border-radius:7px;overflow:hidden;background:#172438}
 .spotlight-artist-links a img{display:block;width:100%;height:100px;object-fit:contain;object-position:center;background:#0d1421}
 .spotlight-artist-links a .artist-link-copy{display:flex;flex-direction:column;gap:3px;padding:10px}
